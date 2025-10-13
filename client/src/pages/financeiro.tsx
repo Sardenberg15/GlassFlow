@@ -31,6 +31,13 @@ export default function Financeiro() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("6months");
   const [typeFilter, setTypeFilter] = useState<"all" | "receita" | "despesa">("all");
+  
+  // Form state for transaction creation
+  const [formType, setFormType] = useState<string>("");
+  const [formProjectId, setFormProjectId] = useState<string>("");
+  const [formDescription, setFormDescription] = useState<string>("");
+  const [formValue, setFormValue] = useState<string>("");
+  const [formDate, setFormDate] = useState<string>("");
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
@@ -162,15 +169,23 @@ export default function Financeiro() {
 
   const handleCreateTransaction = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+    
+    if (!formType || !formProjectId || !formDescription || !formValue || !formDate) {
+      toast({
+        title: "Erro",
+        description: "Por favor, preencha todos os campos.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     try {
       await apiRequest("POST", "/api/transactions", {
-        projectId: formData.get("projectId"),
-        type: formData.get("type"),
-        description: formData.get("description"),
-        value: formData.get("value"),
-        date: formData.get("date"),
+        projectId: formProjectId,
+        type: formType,
+        description: formDescription,
+        value: formValue,
+        date: formDate,
       });
 
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
@@ -178,12 +193,18 @@ export default function Financeiro() {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       
       setIsDialogOpen(false);
+      
+      // Reset form
+      setFormType("");
+      setFormProjectId("");
+      setFormDescription("");
+      setFormValue("");
+      setFormDate("");
+      
       toast({
         title: "Transação criada",
         description: "A transação foi adicionada com sucesso.",
       });
-      
-      e.currentTarget.reset();
     } catch (error) {
       toast({
         title: "Erro",
@@ -214,7 +235,7 @@ export default function Financeiro() {
             <form onSubmit={handleCreateTransaction} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="type">Tipo</Label>
-                <Select name="type" required>
+                <Select value={formType} onValueChange={setFormType} required>
                   <SelectTrigger id="type" data-testid="select-transaction-type">
                     <SelectValue placeholder="Selecione o tipo" />
                   </SelectTrigger>
@@ -226,7 +247,7 @@ export default function Financeiro() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="projectId">Projeto</Label>
-                <Select name="projectId" required>
+                <Select value={formProjectId} onValueChange={setFormProjectId} required>
                   <SelectTrigger id="projectId" data-testid="select-transaction-project">
                     <SelectValue placeholder="Selecione o projeto" />
                   </SelectTrigger>
@@ -243,7 +264,8 @@ export default function Financeiro() {
                 <Label htmlFor="description">Descrição</Label>
                 <Input
                   id="description"
-                  name="description"
+                  value={formDescription}
+                  onChange={(e) => setFormDescription(e.target.value)}
                   placeholder="Descrição da transação"
                   data-testid="input-transaction-description"
                   required
@@ -253,7 +275,8 @@ export default function Financeiro() {
                 <Label htmlFor="value">Valor</Label>
                 <Input
                   id="value"
-                  name="value"
+                  value={formValue}
+                  onChange={(e) => setFormValue(e.target.value)}
                   type="number"
                   step="0.01"
                   placeholder="0.00"
@@ -265,7 +288,8 @@ export default function Financeiro() {
                 <Label htmlFor="date">Data</Label>
                 <Input
                   id="date"
-                  name="date"
+                  value={formDate}
+                  onChange={(e) => setFormDate(e.target.value)}
                   type="date"
                   data-testid="input-transaction-date"
                   required
