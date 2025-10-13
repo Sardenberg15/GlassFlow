@@ -54,6 +54,17 @@ export const quoteItems = pgTable("quote_items", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const projectFiles = pgTable("project_files", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  projectId: varchar("project_id").notNull().references(() => projects.id, { onDelete: 'cascade' }),
+  fileName: text("file_name").notNull(),
+  fileType: text("file_type").notNull(),
+  fileSize: integer("file_size").notNull(),
+  category: text("category").notNull(), // comprovante, nota_fiscal_recebida, nota_fiscal_emitida
+  objectPath: text("object_path").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Relations
 export const clientsRelations = relations(clients, ({ many }) => ({
   projects: many(projects),
@@ -66,6 +77,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
     references: [clients.id],
   }),
   transactions: many(transactions),
+  files: many(projectFiles),
 }));
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
@@ -87,6 +99,13 @@ export const quoteItemsRelations = relations(quoteItems, ({ one }) => ({
   quote: one(quotes, {
     fields: [quoteItems.quoteId],
     references: [quotes.id],
+  }),
+}));
+
+export const projectFilesRelations = relations(projectFiles, ({ one }) => ({
+  project: one(projects, {
+    fields: [projectFiles.projectId],
+    references: [projects.id],
   }),
 }));
 
@@ -116,6 +135,11 @@ export const insertQuoteItemSchema = createInsertSchema(quoteItems).omit({
   createdAt: true,
 });
 
+export const insertProjectFileSchema = createInsertSchema(projectFiles).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
@@ -131,3 +155,6 @@ export type Quote = typeof quotes.$inferSelect;
 
 export type InsertQuoteItem = z.infer<typeof insertQuoteItemSchema>;
 export type QuoteItem = typeof quoteItems.$inferSelect;
+
+export type InsertProjectFile = z.infer<typeof insertProjectFileSchema>;
+export type ProjectFile = typeof projectFiles.$inferSelect;
