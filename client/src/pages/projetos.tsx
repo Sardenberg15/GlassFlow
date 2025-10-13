@@ -567,6 +567,7 @@ export default function Projetos() {
             {/* Cartão de Obras */}
             {selectedProject && (
               <CartaoObras 
+                projectId={selectedProject.id}
                 projectName={selectedProject.name}
                 transactions={selectedProject.transactions.map(t => ({
                   ...t,
