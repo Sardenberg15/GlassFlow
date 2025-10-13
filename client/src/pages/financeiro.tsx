@@ -1,9 +1,12 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { MetricCard } from "@/components/metric-card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DollarSign, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, Line, LineChart, Pie, PieChart, Cell } from "recharts";
+import { useQuery } from "@tanstack/react-query";
+import type { Transaction } from "@shared/schema";
 
-// Mock data - todo: remove mock functionality
+// Mock data for charts - will aggregate real data later
 const financeData = [
   { month: "Jan", receita: 45000, despesa: 32000 },
   { month: "Fev", receita: 52000, despesa: 38000 },
@@ -20,22 +23,33 @@ const categoryData = [
   { name: "Outros", value: 12000, color: "hsl(var(--chart-4))" },
 ];
 
-const recentTransactions = [
-  { id: "1", type: "receita" as const, description: "Pagamento - Fachada Comercial", value: 15000, date: "20/10/2025", project: "Edifício Central" },
-  { id: "2", type: "despesa" as const, description: "Compra de vidros", value: 8000, date: "19/10/2025", project: "Fachada Comercial" },
-  { id: "3", type: "receita" as const, description: "Pagamento - Box Banheiro", value: 3500, date: "18/10/2025", project: "João Silva" },
-  { id: "4", type: "despesa" as const, description: "Mão de obra", value: 3500, date: "17/10/2025", project: "Fachada Comercial" },
-  { id: "5", type: "despesa" as const, description: "Ferragens", value: 1200, date: "16/10/2025", project: "Casa Jardim" },
-];
+interface DashboardStats {
+  activeProjects: number;
+  totalClients: number;
+  receitas: number;
+  despesas: number;
+  lucro: number;
+  margem: number;
+}
 
 export default function Financeiro() {
-  const totalReceitas = financeData.reduce((sum, item) => sum + item.receita, 0);
-  const totalDespesas = financeData.reduce((sum, item) => sum + item.despesa, 0);
-  const lucro = totalReceitas - totalDespesas;
-  const margemLucro = ((lucro / totalReceitas) * 100).toFixed(1);
+  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
+    queryKey: ["/api/dashboard/stats"],
+  });
+
+  const { data: transactions, isLoading: transactionsLoading } = useQuery<Transaction[]>({
+    queryKey: ["/api/transactions"],
+  });
 
   const formatCurrency = (value: number) => 
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+  const totalReceitas = stats?.receitas || 0;
+  const totalDespesas = stats?.despesas || 0;
+  const lucro = stats?.lucro || 0;
+  const margemLucro = stats?.margem || 0;
+
+  const recentTransactions = transactions?.slice(-5).reverse() || [];
 
   return (
     <div className="space-y-6">
@@ -46,30 +60,48 @@ export default function Financeiro() {
 
       {/* Metrics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          title="Receitas Totais"
-          value={formatCurrency(totalReceitas)}
-          icon={ArrowUpCircle}
-          iconColor="bg-chart-2"
-        />
-        <MetricCard
-          title="Despesas Totais"
-          value={formatCurrency(totalDespesas)}
-          icon={ArrowDownCircle}
-          iconColor="bg-chart-4"
-        />
-        <MetricCard
-          title="Lucro Líquido"
-          value={formatCurrency(lucro)}
-          icon={Wallet}
-          iconColor="bg-primary"
-        />
-        <MetricCard
-          title="Margem de Lucro"
-          value={`${margemLucro}%`}
-          icon={TrendingUp}
-          iconColor="bg-chart-3"
-        />
+        {statsLoading ? (
+          <>
+            {[...Array(4)].map((_, i) => (
+              <Card key={i} data-testid={`skeleton-metric-${i}`}>
+                <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-8 w-8 rounded-full" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-32" />
+                </CardContent>
+              </Card>
+            ))}
+          </>
+        ) : (
+          <>
+            <MetricCard
+              title="Receitas Totais"
+              value={formatCurrency(totalReceitas)}
+              icon={ArrowUpCircle}
+              iconColor="bg-chart-2"
+            />
+            <MetricCard
+              title="Despesas Totais"
+              value={formatCurrency(totalDespesas)}
+              icon={ArrowDownCircle}
+              iconColor="bg-chart-4"
+            />
+            <MetricCard
+              title="Lucro Líquido"
+              value={formatCurrency(lucro)}
+              icon={Wallet}
+              iconColor="bg-primary"
+            />
+            <MetricCard
+              title="Margem de Lucro"
+              value={`${margemLucro}%`}
+              icon={TrendingUp}
+              iconColor="bg-chart-3"
+            />
+          </>
+        )}
       </div>
 
       {/* Charts */}
@@ -161,32 +193,60 @@ export default function Financeiro() {
           <CardTitle>Transações Recentes</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {recentTransactions.map((transaction) => (
-              <div
-                key={transaction.id}
-                className="flex items-center justify-between p-4 rounded-lg border hover-elevate"
-                data-testid={`transaction-${transaction.id}`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`rounded-full p-2 ${transaction.type === "receita" ? "bg-chart-2/10" : "bg-chart-4/10"}`}>
-                    {transaction.type === "receita" ? (
-                      <ArrowUpCircle className="h-5 w-5 text-chart-2" />
-                    ) : (
-                      <ArrowDownCircle className="h-5 w-5 text-chart-4" />
-                    )}
+          {transactionsLoading ? (
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-4 rounded-lg border" data-testid={`skeleton-transaction-${i}`}>
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="h-10 w-10 rounded-full" />
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-3 w-32" />
+                    </div>
                   </div>
-                  <div>
-                    <p className="font-medium">{transaction.description}</p>
-                    <p className="text-sm text-muted-foreground">{transaction.project} • {transaction.date}</p>
-                  </div>
+                  <Skeleton className="h-6 w-24" />
                 </div>
-                <span className={`text-lg font-bold font-mono ${transaction.type === "receita" ? "text-chart-2" : "text-chart-4"}`}>
-                  {transaction.type === "receita" ? "+" : "-"}{formatCurrency(transaction.value)}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : recentTransactions.length === 0 ? (
+            <div className="text-center py-12" data-testid="empty-transactions">
+              <Wallet className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">Nenhuma transação encontrada</h3>
+              <p className="text-sm text-muted-foreground">
+                As transações aparecerão aqui quando forem criadas
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {recentTransactions.map((transaction) => (
+                <div
+                  key={transaction.id}
+                  className="flex items-center justify-between p-4 rounded-lg border hover-elevate"
+                  data-testid={`transaction-${transaction.id}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`rounded-full p-2 ${transaction.type === "receita" ? "bg-chart-2/10" : "bg-chart-4/10"}`}>
+                      {transaction.type === "receita" ? (
+                        <ArrowUpCircle className="h-5 w-5 text-chart-2" />
+                      ) : (
+                        <ArrowDownCircle className="h-5 w-5 text-chart-4" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium" data-testid={`transaction-description-${transaction.id}`}>{transaction.description}</p>
+                      <p className="text-sm text-muted-foreground" data-testid={`transaction-date-${transaction.id}`}>{transaction.date}</p>
+                    </div>
+                  </div>
+                  <span 
+                    className={`text-lg font-bold font-mono ${transaction.type === "receita" ? "text-chart-2" : "text-chart-4"}`}
+                    data-testid={`transaction-value-${transaction.id}`}
+                  >
+                    {transaction.type === "receita" ? "+" : "-"}{formatCurrency(parseFloat(transaction.value))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

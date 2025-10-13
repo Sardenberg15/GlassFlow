@@ -1,7 +1,10 @@
 import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Filter, Calendar, User } from "lucide-react";
 import { ProjectStatusBadge } from "@/components/project-status-badge";
 import { CartaoObras } from "@/components/cartao-obras";
@@ -24,110 +27,168 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import type { Project, Transaction, Client } from "@shared/schema";
 
-// Mock data - todo: remove mock functionality
-const mockProjetos = [
-  { 
-    id: "1", 
-    name: "Fachada Comercial - Edifício Central", 
-    client: "Construtora ABC", 
-    status: "execucao" as const, 
-    value: 30000, 
-    date: "15/10/2025",
-    transactions: [
-      { id: "1", type: "receita" as const, description: "Pagamento inicial - 50%", value: 15000, date: "10/10/2025" },
-      { id: "2", type: "despesa" as const, description: "Compra de vidros temperados", value: 8000, date: "12/10/2025" },
-      { id: "3", type: "despesa" as const, description: "Mão de obra - instalação", value: 3500, date: "15/10/2025" },
-    ]
-  },
-  { 
-    id: "2", 
-    name: "Box de Banheiro Residencial", 
-    client: "João Silva", 
-    status: "aprovado" as const, 
-    value: 3500, 
-    date: "18/10/2025",
-    transactions: [
-      { id: "4", type: "receita" as const, description: "Pagamento integral", value: 3500, date: "18/10/2025" },
-    ]
-  },
-  { 
-    id: "3", 
-    name: "Espelhos Decorativos - Loja Shopping", 
-    client: "Decorações Premium", 
-    status: "orcamento" as const, 
-    value: 12000, 
-    date: "20/10/2025",
-    transactions: []
-  },
-  { 
-    id: "4", 
-    name: "Reparo de Vidraça - Escritório", 
-    client: "Empresa XYZ", 
-    status: "finalizado" as const, 
-    value: 850, 
-    date: "10/10/2025",
-    transactions: [
-      { id: "5", type: "receita" as const, description: "Pagamento à vista", value: 850, date: "10/10/2025" },
-      { id: "6", type: "despesa" as const, description: "Vidro e mão de obra", value: 550, date: "10/10/2025" },
-    ]
-  },
-  { 
-    id: "5", 
-    name: "Janelas Residenciais - Casa Jardim", 
-    client: "Maria Fernandes", 
-    status: "aprovado" as const, 
-    value: 8500, 
-    date: "22/10/2025",
-    transactions: []
-  },
-];
+type ProjectStatus = "orcamento" | "aprovado" | "execucao" | "finalizado" | "cancelado";
+
+type ProjectWithTransactions = Project & {
+  client: Client;
+  transactions: Transaction[];
+};
 
 export default function Projetos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [openNew, setOpenNew] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<typeof mockProjetos[0] | null>(null);
+  const [selectedProject, setSelectedProject] = useState<ProjectWithTransactions | null>(null);
   const [openReceita, setOpenReceita] = useState(false);
   const [openDespesa, setOpenDespesa] = useState(false);
   const { toast } = useToast();
 
-  const filteredProjetos = mockProjetos.filter(projeto => {
+  // Fetch projects
+  const { data: projects = [], isLoading: projectsLoading } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+  });
+
+  // Fetch transactions
+  const { data: transactions = [], isLoading: transactionsLoading } = useQuery<Transaction[]>({
+    queryKey: ["/api/transactions"],
+  });
+
+  // Fetch clients for dropdown
+  const { data: clients = [] } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
+
+  // Merge projects with their transactions and client data
+  const projectsWithData: ProjectWithTransactions[] = projects.map(project => {
+    const projectTransactions = transactions.filter(t => t.projectId === project.id);
+    const client = clients.find(c => c.id === project.clientId);
+    return {
+      ...project,
+      client: client || { id: project.clientId, name: "Cliente não encontrado", contact: "", email: "", phone: "", createdAt: new Date() },
+      transactions: projectTransactions,
+    };
+  });
+
+  // Filter projects
+  const filteredProjetos = projectsWithData.filter(projeto => {
     const matchesSearch = projeto.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         projeto.client.toLowerCase().includes(searchTerm.toLowerCase());
+                         projeto.client.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "todos" || projeto.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const formatCurrency = (value: number) => 
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  // Create project mutation
+  const createProjectMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      const projectData = {
+        name: data.get("name") as string,
+        clientId: data.get("clientId") as string,
+        description: data.get("description") as string || "",
+        value: data.get("value") as string,
+        type: data.get("type") as string,
+        status: "orcamento",
+        date: new Date().toLocaleDateString('pt-BR'),
+      };
+      const response = await apiRequest("POST", "/api/projects", projectData);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      toast({
+        title: "Projeto criado!",
+        description: "O orçamento foi gerado com sucesso.",
+      });
+      setOpenNew(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao criar projeto",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
 
-  const handleSubmitNew = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Projeto criado");
-    toast({
-      title: "Projeto criado!",
-      description: "O orçamento foi gerado com sucesso.",
-    });
-    setOpenNew(false);
+  // Update project status mutation
+  const updateProjectStatusMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: ProjectStatus }) => {
+      const response = await apiRequest("PATCH", `/api/projects/${id}`, { status });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      toast({
+        title: "Status atualizado!",
+        description: "O status do projeto foi alterado com sucesso.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao atualizar status",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Create transaction mutation
+  const createTransactionMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      const transactionData = {
+        projectId: selectedProject?.id as string,
+        type: data.get("type") as string,
+        description: data.get("description") as string,
+        value: data.get("value") as string,
+        date: data.get("date") as string,
+      };
+      const response = await apiRequest("POST", "/api/transactions", transactionData);
+      return response.json();
+    },
+    onSuccess: (_, variables) => {
+      const type = variables.get("type") as string;
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      toast({
+        title: `${type === "receita" ? "Receita" : "Despesa"} registrada!`,
+        description: `A ${type} foi adicionada ao projeto.`,
+      });
+      type === "receita" ? setOpenReceita(false) : setOpenDespesa(false);
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao registrar transação",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const formatCurrency = (value: number | string) => {
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(numValue);
   };
 
-  const handleAddTransaction = (type: "receita" | "despesa") => {
-    console.log(`${type} adicionada ao projeto ${selectedProject?.id}`);
-    toast({
-      title: `${type === "receita" ? "Receita" : "Despesa"} registrada!`,
-      description: `A ${type} foi adicionada ao projeto.`,
-    });
-    type === "receita" ? setOpenReceita(false) : setOpenDespesa(false);
+  const handleSubmitNew = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createProjectMutation.mutate(formData);
+  };
+
+  const handleAddTransaction = (e: React.FormEvent<HTMLFormElement>, type: "receita" | "despesa") => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    formData.append("type", type);
+    createTransactionMutation.mutate(formData);
   };
 
   const handleStatusChange = (newStatus: string) => {
-    console.log(`Status do projeto ${selectedProject?.id} alterado para ${newStatus}`);
-    toast({
-      title: "Status atualizado!",
-      description: `O projeto foi movido para ${newStatus}.`,
-    });
+    if (selectedProject) {
+      updateProjectStatusMutation.mutate({ id: selectedProject.id, status: newStatus as ProjectStatus });
+    }
   };
+
+  const isLoading = projectsLoading || transactionsLoading;
 
   return (
     <div className="space-y-6">
@@ -152,34 +213,55 @@ export default function Projetos() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="project-name">Nome do Projeto</Label>
-                  <Input id="project-name" placeholder="Ex: Fachada Comercial" data-testid="input-projeto-name" />
+                  <Input 
+                    id="project-name" 
+                    name="name"
+                    placeholder="Ex: Fachada Comercial" 
+                    data-testid="input-projeto-name"
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="client">Cliente</Label>
-                  <Select>
+                  <Select name="clientId" required>
                     <SelectTrigger data-testid="select-cliente">
                       <SelectValue placeholder="Selecione o cliente" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1">Construtora ABC</SelectItem>
-                      <SelectItem value="2">João Silva</SelectItem>
-                      <SelectItem value="3">Decorações Premium</SelectItem>
+                      {clients.map((client) => (
+                        <SelectItem key={client.id} value={client.id}>
+                          {client.name}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Descrição</Label>
-                <Textarea id="description" placeholder="Descreva o projeto..." data-testid="input-projeto-description" />
+                <Textarea 
+                  id="description" 
+                  name="description"
+                  placeholder="Descreva o projeto..." 
+                  data-testid="input-projeto-description" 
+                />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="value">Valor Estimado</Label>
-                  <Input id="value" type="number" placeholder="0.00" data-testid="input-projeto-value" />
+                  <Input 
+                    id="value" 
+                    name="value"
+                    type="number" 
+                    step="0.01"
+                    placeholder="0.00" 
+                    data-testid="input-projeto-value"
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="type">Tipo</Label>
-                  <Select>
+                  <Select name="type" required>
                     <SelectTrigger data-testid="select-tipo">
                       <SelectValue placeholder="Selecione o tipo" />
                     </SelectTrigger>
@@ -191,8 +273,13 @@ export default function Projetos() {
                   </Select>
                 </div>
               </div>
-              <Button type="submit" className="w-full" data-testid="button-submit-projeto">
-                Criar Projeto
+              <Button 
+                type="submit" 
+                className="w-full" 
+                data-testid="button-submit-projeto"
+                disabled={createProjectMutation.isPending}
+              >
+                {createProjectMutation.isPending ? "Criando..." : "Criar Projeto"}
               </Button>
             </form>
           </DialogContent>
@@ -226,37 +313,77 @@ export default function Projetos() {
         </Select>
       </div>
 
-      {/* Projects Grid - Cards clicáveis */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filteredProjetos.map((projeto) => (
-          <Card 
-            key={projeto.id} 
-            className="hover-elevate cursor-pointer transition-all" 
-            onClick={() => setSelectedProject(projeto)}
-            data-testid={`card-projeto-${projeto.id}`}
-          >
-            <CardHeader className="space-y-3">
-              <div className="flex items-start justify-between gap-2">
-                <CardTitle className="text-base line-clamp-2">{projeto.name}</CardTitle>
-                <ProjectStatusBadge status={projeto.status} />
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <User className="h-4 w-4" />
-                <span className="truncate">{projeto.client}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Calendar className="h-4 w-4" />
-                <span>{projeto.date}</span>
-              </div>
-              <div className="pt-2 border-t">
-                <p className="text-2xl font-bold font-mono">{formatCurrency(projeto.value)}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Loading State */}
+      {isLoading && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i}>
+              <CardHeader className="space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-5 w-20" />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Skeleton className="h-4 w-2/3" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-8 w-full" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && filteredProjetos.length === 0 && (
+        <Card className="p-12">
+          <div className="text-center space-y-3">
+            <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+              <Search className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <h3 className="font-semibold text-lg">Nenhum projeto encontrado</h3>
+            <p className="text-muted-foreground">
+              {searchTerm || statusFilter !== "todos" 
+                ? "Tente ajustar os filtros de busca" 
+                : "Comece criando um novo projeto"}
+            </p>
+          </div>
+        </Card>
+      )}
+
+      {/* Projects Grid */}
+      {!isLoading && filteredProjetos.length > 0 && (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredProjetos.map((projeto) => (
+            <Card 
+              key={projeto.id} 
+              className="hover-elevate cursor-pointer transition-all" 
+              onClick={() => setSelectedProject(projeto)}
+              data-testid={`card-projeto-${projeto.id}`}
+            >
+              <CardHeader className="space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-base line-clamp-2">{projeto.name}</CardTitle>
+                  <ProjectStatusBadge status={projeto.status as ProjectStatus} />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="h-4 w-4" />
+                  <span className="truncate">{projeto.client.name}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Calendar className="h-4 w-4" />
+                  <span>{projeto.date}</span>
+                </div>
+                <div className="pt-2 border-t">
+                  <p className="text-2xl font-bold font-mono">{formatCurrency(projeto.value)}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Modal de Detalhes do Projeto */}
       <Dialog open={!!selectedProject} onOpenChange={() => setSelectedProject(null)}>
@@ -264,7 +391,7 @@ export default function Projetos() {
           <DialogHeader>
             <DialogTitle className="text-2xl">{selectedProject?.name}</DialogTitle>
             <DialogDescription>
-              Cliente: {selectedProject?.client} | Data: {selectedProject?.date}
+              Cliente: {selectedProject?.client.name} | Data: {selectedProject?.date}
             </DialogDescription>
           </DialogHeader>
 
@@ -273,7 +400,11 @@ export default function Projetos() {
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold">Status do Projeto</h3>
-                <Select value={selectedProject?.status} onValueChange={handleStatusChange}>
+                <Select 
+                  value={selectedProject?.status} 
+                  onValueChange={handleStatusChange}
+                  disabled={updateProjectStatusMutation.isPending}
+                >
                   <SelectTrigger className="w-[200px]" data-testid="select-edit-status">
                     <SelectValue />
                   </SelectTrigger>
@@ -285,7 +416,7 @@ export default function Projetos() {
                   </SelectContent>
                 </Select>
               </div>
-              {selectedProject && <StatusWorkflow currentStatus={selectedProject.status} />}
+              {selectedProject && <StatusWorkflow currentStatus={selectedProject.status as "orcamento" | "aprovado" | "execucao" | "finalizado"} />}
             </div>
 
             {/* Botões de Ação */}
@@ -302,21 +433,46 @@ export default function Projetos() {
                     <DialogTitle>Registrar Receita</DialogTitle>
                     <DialogDescription>Adicione uma receita ao projeto</DialogDescription>
                   </DialogHeader>
-                  <form onSubmit={(e) => { e.preventDefault(); handleAddTransaction("receita"); }} className="space-y-4">
+                  <form onSubmit={(e) => handleAddTransaction(e, "receita")} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="receita-desc">Descrição</Label>
-                      <Input id="receita-desc" placeholder="Ex: Pagamento inicial" data-testid="input-modal-receita-desc" />
+                      <Input 
+                        id="receita-desc" 
+                        name="description"
+                        placeholder="Ex: Pagamento inicial" 
+                        data-testid="input-modal-receita-desc"
+                        required
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="receita-value">Valor (R$)</Label>
-                      <Input id="receita-value" type="number" placeholder="0.00" data-testid="input-modal-receita-value" />
+                      <Input 
+                        id="receita-value" 
+                        name="value"
+                        type="number" 
+                        step="0.01"
+                        placeholder="0.00" 
+                        data-testid="input-modal-receita-value"
+                        required
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="receita-date">Data</Label>
-                      <Input id="receita-date" type="date" data-testid="input-modal-receita-date" />
+                      <Input 
+                        id="receita-date" 
+                        name="date"
+                        type="date" 
+                        data-testid="input-modal-receita-date"
+                        required
+                      />
                     </div>
-                    <Button type="submit" className="w-full" data-testid="button-modal-submit-receita">
-                      Adicionar Receita
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      data-testid="button-modal-submit-receita"
+                      disabled={createTransactionMutation.isPending}
+                    >
+                      {createTransactionMutation.isPending ? "Adicionando..." : "Adicionar Receita"}
                     </Button>
                   </form>
                 </DialogContent>
@@ -334,21 +490,46 @@ export default function Projetos() {
                     <DialogTitle>Registrar Despesa</DialogTitle>
                     <DialogDescription>Adicione uma despesa ao projeto</DialogDescription>
                   </DialogHeader>
-                  <form onSubmit={(e) => { e.preventDefault(); handleAddTransaction("despesa"); }} className="space-y-4">
+                  <form onSubmit={(e) => handleAddTransaction(e, "despesa")} className="space-y-4">
                     <div className="space-y-2">
                       <Label htmlFor="despesa-desc">Descrição</Label>
-                      <Input id="despesa-desc" placeholder="Ex: Compra de materiais" data-testid="input-modal-despesa-desc" />
+                      <Input 
+                        id="despesa-desc" 
+                        name="description"
+                        placeholder="Ex: Compra de materiais" 
+                        data-testid="input-modal-despesa-desc"
+                        required
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="despesa-value">Valor (R$)</Label>
-                      <Input id="despesa-value" type="number" placeholder="0.00" data-testid="input-modal-despesa-value" />
+                      <Input 
+                        id="despesa-value" 
+                        name="value"
+                        type="number" 
+                        step="0.01"
+                        placeholder="0.00" 
+                        data-testid="input-modal-despesa-value"
+                        required
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="despesa-date">Data</Label>
-                      <Input id="despesa-date" type="date" data-testid="input-modal-despesa-date" />
+                      <Input 
+                        id="despesa-date" 
+                        name="date"
+                        type="date" 
+                        data-testid="input-modal-despesa-date"
+                        required
+                      />
                     </div>
-                    <Button type="submit" className="w-full" data-testid="button-modal-submit-despesa">
-                      Adicionar Despesa
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      data-testid="button-modal-submit-despesa"
+                      disabled={createTransactionMutation.isPending}
+                    >
+                      {createTransactionMutation.isPending ? "Adicionando..." : "Adicionar Despesa"}
                     </Button>
                   </form>
                 </DialogContent>
@@ -359,7 +540,11 @@ export default function Projetos() {
             {selectedProject && (
               <CartaoObras 
                 projectName={selectedProject.name}
-                transactions={selectedProject.transactions}
+                transactions={selectedProject.transactions.map(t => ({
+                  ...t,
+                  type: t.type as "receita" | "despesa",
+                  value: typeof t.value === 'string' ? parseFloat(t.value) : t.value
+                }))}
               />
             )}
           </div>

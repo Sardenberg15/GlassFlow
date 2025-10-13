@@ -1,10 +1,15 @@
+import { useQuery } from "@tanstack/react-query";
 import { MetricCard } from "@/components/metric-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { FileText, Users, DollarSign, TrendingUp, AlertCircle } from "lucide-react";
 import { ProjectStatusBadge } from "@/components/project-status-badge";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, Line, LineChart } from "recharts";
+import type { Project, Client } from "@shared/schema";
 
-// Mock data - todo: remove mock functionality
+type ProjectStatus = "orcamento" | "aprovado" | "execucao" | "finalizado" | "cancelado";
+
+// Mock data for charts - will be replaced later with aggregated data
 const revenueData = [
   { month: "Jan", receita: 45000, despesa: 32000 },
   { month: "Fev", receita: 52000, despesa: 38000 },
@@ -14,14 +19,48 @@ const revenueData = [
   { month: "Jun", receita: 67000, despesa: 45000 },
 ];
 
-const recentProjects = [
-  { id: "1", name: "Fachada Comercial - Edifício Central", client: "Construtora ABC", status: "execucao" as const, value: "R$ 30.000" },
-  { id: "2", name: "Box de Banheiro Residencial", client: "João Silva", status: "aprovado" as const, value: "R$ 3.500" },
-  { id: "3", name: "Espelhos Decorativos - Loja Shopping", client: "Decorações Ltda", status: "orcamento" as const, value: "R$ 12.000" },
-  { id: "4", name: "Reparo de Vidraça - Escritório", client: "Empresa XYZ", status: "finalizado" as const, value: "R$ 850" },
-];
+interface DashboardStats {
+  activeProjects: number;
+  totalClients: number;
+  receitas: number;
+  despesas: number;
+  lucro: number;
+  margem: number;
+}
 
 export default function Dashboard() {
+  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
+    queryKey: ["/api/dashboard/stats"],
+  });
+
+  const { data: projects, isLoading: projectsLoading } = useQuery<Project[]>({
+    queryKey: ["/api/projects"],
+  });
+
+  const { data: clients, isLoading: clientsLoading } = useQuery<Client[]>({
+    queryKey: ["/api/clients"],
+  });
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+    }).format(value);
+  };
+
+  const formatPercentage = (value: number) => {
+    return `${value.toFixed(1)}%`;
+  };
+
+  // Get client name by ID
+  const getClientName = (clientId: string) => {
+    const client = clients?.find(c => c.id === clientId);
+    return client?.name || "Cliente não encontrado";
+  };
+
+  // Get recent projects (first 4)
+  const recentProjects = projects?.slice(0, 4) || [];
+
   return (
     <div className="space-y-6">
       <div>
@@ -31,34 +70,73 @@ export default function Dashboard() {
 
       {/* Metrics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <MetricCard
-          title="Projetos Ativos"
-          value="24"
-          icon={FileText}
-          trend={{ value: 8, isPositive: true }}
-          iconColor="bg-primary"
-        />
-        <MetricCard
-          title="Total de Clientes"
-          value="248"
-          icon={Users}
-          trend={{ value: 12, isPositive: true }}
-          iconColor="bg-chart-2"
-        />
-        <MetricCard
-          title="Receita do Mês"
-          value="R$ 67.000"
-          icon={DollarSign}
-          trend={{ value: 15, isPositive: true }}
-          iconColor="bg-chart-3"
-        />
-        <MetricCard
-          title="Margem Média"
-          value="32.8%"
-          icon={TrendingUp}
-          trend={{ value: 3, isPositive: true }}
-          iconColor="bg-primary"
-        />
+        {statsLoading ? (
+          <>
+            <Card>
+              <CardContent className="p-6">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-3 w-20" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-3 w-20" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-3 w-20" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-8 w-16 mb-2" />
+                <Skeleton className="h-3 w-20" />
+              </CardContent>
+            </Card>
+          </>
+        ) : stats ? (
+          <>
+            <MetricCard
+              title="Projetos Ativos"
+              value={stats.activeProjects.toString()}
+              icon={FileText}
+              trend={{ value: 8, isPositive: true }}
+              iconColor="bg-primary"
+              data-testid="metric-active-projects"
+            />
+            <MetricCard
+              title="Total de Clientes"
+              value={stats.totalClients.toString()}
+              icon={Users}
+              trend={{ value: 12, isPositive: true }}
+              iconColor="bg-chart-2"
+              data-testid="metric-total-clients"
+            />
+            <MetricCard
+              title="Receita do Mês"
+              value={formatCurrency(stats.receitas)}
+              icon={DollarSign}
+              trend={{ value: 15, isPositive: true }}
+              iconColor="bg-chart-3"
+              data-testid="metric-monthly-revenue"
+            />
+            <MetricCard
+              title="Margem Média"
+              value={formatPercentage(stats.margem)}
+              icon={TrendingUp}
+              trend={{ value: 3, isPositive: true }}
+              iconColor="bg-primary"
+              data-testid="metric-average-margin"
+            />
+          </>
+        ) : null}
       </div>
 
       {/* Charts */}
@@ -122,24 +200,50 @@ export default function Dashboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {recentProjects.map((project) => (
-              <div
-                key={project.id}
-                className="flex items-center justify-between p-4 rounded-lg border hover-elevate"
-                data-testid={`project-${project.id}`}
-              >
-                <div className="space-y-1">
-                  <p className="font-medium">{project.name}</p>
-                  <p className="text-sm text-muted-foreground">{project.client}</p>
+          {projectsLoading || clientsLoading ? (
+            <div className="space-y-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex items-center justify-between p-4 rounded-lg border">
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-64" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-6 w-20" />
+                  </div>
                 </div>
-                <div className="flex items-center gap-4">
-                  <span className="font-semibold font-mono">{project.value}</span>
-                  <ProjectStatusBadge status={project.status} />
+              ))}
+            </div>
+          ) : recentProjects.length > 0 ? (
+            <div className="space-y-4">
+              {recentProjects.map((project) => (
+                <div
+                  key={project.id}
+                  className="flex items-center justify-between p-4 rounded-lg border hover-elevate"
+                  data-testid={`project-${project.id}`}
+                >
+                  <div className="space-y-1">
+                    <p className="font-medium" data-testid={`project-name-${project.id}`}>{project.name}</p>
+                    <p className="text-sm text-muted-foreground" data-testid={`project-client-${project.id}`}>
+                      {getClientName(project.clientId)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className="font-semibold font-mono" data-testid={`project-value-${project.id}`}>
+                      {formatCurrency(parseFloat(project.value))}
+                    </span>
+                    <ProjectStatusBadge status={project.status as ProjectStatus} />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8" data-testid="empty-projects">
+              <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+              <p className="text-muted-foreground">Nenhum projeto encontrado</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
