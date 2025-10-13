@@ -62,6 +62,7 @@ Preferred communication style: Simple, everyday language.
 - **Clients**: Customer information (name, contact, email, phone)
 - **Projects**: Project details with status workflow (orcamento → aprovado → execucao → finalizado/cancelado)
 - **Transactions**: Financial records (receita/despesa) linked to projects
+- **Project Files**: File attachments for projects (comprovantes, notas fiscais) with metadata and categorization
 - Relational structure with foreign key constraints and cascade deletes
 
 **Storage Pattern:**
@@ -69,6 +70,20 @@ Preferred communication style: Simple, everyday language.
 - `DatabaseStorage` class provides concrete implementation
 - Abstraction allows for potential storage backend swapping
 - All database operations return typed entities
+
+**File Upload System:**
+- Replit Object Storage integration for file management
+- Uppy file uploader with modal interface (React Dashboard component)
+- Three file categories for project documentation:
+  - Comprovantes de Pagamento (Payment receipts)
+  - Notas Fiscais Recebidas (Received invoices)
+  - Notas Fiscais Emitidas (Issued invoices)
+- File metadata stored in PostgreSQL (projectFiles table)
+- Files stored in private object storage bucket (PRIVATE_OBJECT_DIR)
+- ACL configuration ensures proper access control
+- ObjectStorageService handles signed URLs for secure upload/download
+- API routes: POST /api/projects/:id/files, GET /api/files/:id/download, DELETE /api/files/:id
+- Uppy CSS loaded via CDN to avoid bundling issues
 
 ### Development Workflow
 
