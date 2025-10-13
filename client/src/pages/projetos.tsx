@@ -169,6 +169,19 @@ export default function Projetos() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(numValue);
   };
 
+  const calculateProjectFinancials = (projectId: number) => {
+    const projectTransactions = transactions.filter(t => t.projectId === projectId);
+    const receitas = projectTransactions
+      .filter(t => t.type === 'receita')
+      .reduce((sum, t) => sum + parseFloat(String(t.value)), 0);
+    const despesas = projectTransactions
+      .filter(t => t.type === 'despesa')
+      .reduce((sum, t) => sum + parseFloat(String(t.value)), 0);
+    const profit = receitas - despesas;
+    const margin = receitas > 0 ? (profit / receitas) * 100 : 0;
+    return { receitas, despesas, profit, margin };
+  };
+
   const handleSubmitNew = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
@@ -377,7 +390,22 @@ export default function Projetos() {
                   <span>{projeto.date}</span>
                 </div>
                 <div className="pt-2 border-t">
-                  <p className="text-2xl font-bold font-mono">{formatCurrency(projeto.value)}</p>
+                  {(() => {
+                    const financials = calculateProjectFinancials(projeto.id);
+                    if (financials.receitas === 0 && financials.despesas === 0) {
+                      return <p className="text-2xl font-bold font-mono">{formatCurrency(projeto.value)}</p>;
+                    }
+                    return (
+                      <div className="space-y-1">
+                        <p className="text-2xl font-bold font-mono" data-testid={`text-profit-${projeto.id}`}>
+                          {formatCurrency(financials.profit)}
+                        </p>
+                        <p className="text-sm text-muted-foreground" data-testid={`text-margin-${projeto.id}`}>
+                          Margem: {financials.margin.toFixed(1)}%
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
               </CardContent>
             </Card>
