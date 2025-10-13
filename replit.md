@@ -2,7 +2,7 @@
 
 ## Overview
 
-HelpGlass is a comprehensive ERP/CRM system designed for managing glass and mirror projects. The application provides end-to-end business management capabilities including client relationship management, project tracking, financial management, and workflow automation. Built as a full-stack web application, it serves businesses in the glass and mirror installation industry with features tailored to track quotes, projects, transactions, and client interactions.
+HelpGlass is a comprehensive ERP/CRM system designed for managing glass and mirror projects. The application provides end-to-end business management capabilities including client relationship management, project tracking, complete financial management with real-time analytics, and workflow automation. Built as a full-stack web application, it serves businesses in the glass and mirror installation industry with features tailored to track quotes, projects, transactions, financial reports, and client interactions.
 
 ## User Preferences
 
@@ -37,6 +37,13 @@ Preferred communication style: Simple, everyday language.
 - Custom business components (MetricCard, ProjectStatusBadge, CartaoObras, StatusWorkflow)
 - Responsive design with mobile-first approach using Tailwind breakpoints
 - Component composition pattern for reusability
+
+**Key Pages:**
+- **Dashboard**: Overview metrics, recent projects, revenue trends
+- **Clientes**: Client management with CRUD operations
+- **Projetos**: Project tracking with status workflow and financial details
+- **Orçamentos**: Quotation generation with PDF export
+- **Financeiro**: Complete financial management with analytics, charts, and transaction management
 
 ### Backend Architecture
 
@@ -84,6 +91,29 @@ Preferred communication style: Simple, everyday language.
 - ObjectStorageService handles signed URLs for secure upload/download
 - API routes: POST /api/projects/:id/files, GET /api/files/:id/download, DELETE /api/files/:id
 - Uppy CSS loaded via CDN to avoid bundling issues
+
+**Financial Management System (Financeiro Page):**
+- Complete financial analytics dashboard with real-time data
+- Four key metrics display: Total Revenue, Total Expenses, Net Profit, Profit Margin
+- Multiple chart visualizations:
+  - Bar Chart: Monthly Revenue vs Expenses comparison
+  - Pie Chart: Revenue breakdown by project category (vidro, espelho, reparo)
+  - Line Chart: Cash Flow trend analysis
+- Advanced filtering capabilities:
+  - Period filters: Last month, 3 months, 6 months, year, all time
+  - Type filters: All transactions, Revenue only, Expenses only
+- Real-time data aggregation from transactions:
+  - Monthly aggregation based on transaction dates
+  - Category aggregation based on project types
+  - Automatic recalculation using useMemo hooks
+- Complete transaction management:
+  - Create new transactions with controlled form components
+  - Full transaction table with date, type, description, project, and value
+  - Delete transactions with cache invalidation
+  - Validation and error handling
+- Controlled form implementation using React useState for all fields (fixes shadcn Select compatibility)
+- Empty state handling for periods with no data
+- Responsive charts using Recharts library
 
 ### Development Workflow
 
