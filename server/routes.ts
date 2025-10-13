@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertClientSchema, insertProjectSchema, insertTransactionSchema } from "@shared/schema";
+import { insertClientSchema, insertProjectSchema, insertTransactionSchema, insertQuoteSchema, insertQuoteItemSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Clients Routes
@@ -195,6 +195,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch dashboard stats" });
+    }
+  });
+
+  // Quotes Routes
+  app.get("/api/quotes", async (req, res) => {
+    try {
+      const quotes = await storage.getQuotes();
+      res.json(quotes);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch quotes" });
+    }
+  });
+
+  app.get("/api/quotes/:id", async (req, res) => {
+    try {
+      const quote = await storage.getQuote(req.params.id);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      res.json(quote);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch quote" });
+    }
+  });
+
+  app.get("/api/clients/:clientId/quotes", async (req, res) => {
+    try {
+      const quotes = await storage.getQuotesByClient(req.params.clientId);
+      res.json(quotes);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch client quotes" });
+    }
+  });
+
+  app.post("/api/quotes", async (req, res) => {
+    try {
+      const validatedData = insertQuoteSchema.parse(req.body);
+      const quote = await storage.createQuote(validatedData);
+      res.status(201).json(quote);
+    } catch (error) {
+      console.error("Quote creation error:", error);
+      res.status(400).json({ error: "Invalid quote data" });
+    }
+  });
+
+  app.patch("/api/quotes/:id", async (req, res) => {
+    try {
+      const quote = await storage.updateQuote(req.params.id, req.body);
+      if (!quote) {
+        return res.status(404).json({ error: "Quote not found" });
+      }
+      res.json(quote);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update quote" });
+    }
+  });
+
+  app.delete("/api/quotes/:id", async (req, res) => {
+    try {
+      await storage.deleteQuote(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete quote" });
+    }
+  });
+
+  // Quote Items Routes
+  app.get("/api/quotes/:quoteId/items", async (req, res) => {
+    try {
+      const items = await storage.getQuoteItems(req.params.quoteId);
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch quote items" });
+    }
+  });
+
+  app.post("/api/quote-items", async (req, res) => {
+    try {
+      const validatedData = insertQuoteItemSchema.parse(req.body);
+      const item = await storage.createQuoteItem(validatedData);
+      res.status(201).json(item);
+    } catch (error) {
+      console.error("Quote item creation error:", error);
+      res.status(400).json({ error: "Invalid quote item data" });
+    }
+  });
+
+  app.delete("/api/quote-items/:id", async (req, res) => {
+    try {
+      await storage.deleteQuoteItem(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete quote item" });
     }
   });
 
