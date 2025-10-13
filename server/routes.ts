@@ -262,6 +262,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Quote Items Routes
+  app.get("/api/quote-items", async (req, res) => {
+    try {
+      const items = await storage.getAllQuoteItems();
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch all quote items" });
+    }
+  });
+
   app.get("/api/quotes/:quoteId/items", async (req, res) => {
     try {
       const items = await storage.getQuoteItems(req.params.quoteId);

@@ -49,6 +49,7 @@ export interface IStorage {
   deleteQuote(id: string): Promise<void>;
   
   // Quote Items
+  getAllQuoteItems(): Promise<QuoteItem[]>;
   getQuoteItems(quoteId: string): Promise<QuoteItem[]>;
   createQuoteItem(item: InsertQuoteItem): Promise<QuoteItem>;
   deleteQuoteItem(id: string): Promise<void>;
@@ -166,6 +167,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Quote Items
+  async getAllQuoteItems(): Promise<QuoteItem[]> {
+    return await db.select().from(quoteItems);
+  }
+
   async getQuoteItems(quoteId: string): Promise<QuoteItem[]> {
     return await db.select().from(quoteItems).where(eq(quoteItems.quoteId, quoteId));
   }

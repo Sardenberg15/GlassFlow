@@ -56,16 +56,15 @@ export default function Orcamentos() {
     queryKey: ["/api/clients"],
   });
 
-  // Fetch quote items for selected quote
-  const { data: items = [] } = useQuery<QuoteItem[]>({
-    queryKey: ["/api/quotes", selectedQuote?.id, "items"],
-    enabled: !!selectedQuote,
-    queryFn: async () => {
-      const response = await fetch(`/api/quotes/${selectedQuote?.id}/items`);
-      if (!response.ok) throw new Error('Failed to fetch items');
-      return response.json();
-    },
+  // Fetch all quote items
+  const { data: allItems = [] } = useQuery<QuoteItem[]>({
+    queryKey: ["/api/quote-items"],
   });
+
+  // Get items for selected quote
+  const selectedQuoteItems = selectedQuote 
+    ? allItems.filter(item => item.quoteId === selectedQuote.id)
+    : [];
 
   // Filter quotes
   const filteredQuotes = quotes.filter(quote => {
@@ -112,8 +111,9 @@ export default function Orcamentos() {
 
       return quote;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/quote-items"] });
       toast({
         title: "Orçamento criado!",
         description: "O orçamento foi gerado com sucesso.",
@@ -373,6 +373,7 @@ export default function Orcamentos() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredQuotes.map(quote => {
             const client = clients.find(c => c.id === quote.clientId);
+            const quoteItems = allItems.filter(item => item.quoteId === quote.id);
             return (
               <Card key={quote.id} data-testid={`card-quote-${quote.id}`}>
                 <CardHeader>
@@ -400,9 +401,9 @@ export default function Orcamentos() {
                       <Eye className="h-4 w-4 mr-2" />
                       Visualizar
                     </Button>
-                    {client && items.length > 0 && (
+                    {client && quoteItems.length > 0 && (
                       <PDFDownloadLink
-                        document={<QuotePDF quote={quote} client={client} items={items} />}
+                        document={<QuotePDF quote={quote} client={client} items={quoteItems} />}
                         fileName={`${quote.number}.pdf`}
                         className="flex-1"
                       >
@@ -484,7 +485,7 @@ export default function Orcamentos() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {items.map(item => (
+                    {selectedQuoteItems.map(item => (
                       <TableRow key={item.id}>
                         <TableCell>{item.description}</TableCell>
                         <TableCell>{parseFloat(String(item.quantity)).toFixed(2)}</TableCell>
@@ -496,7 +497,7 @@ export default function Orcamentos() {
                 </Table>
                 <div className="text-right mt-4">
                   <p className="text-lg font-bold">
-                    Total: {formatCurrency(items.reduce((sum, item) => sum + parseFloat(String(item.total)), 0))}
+                    Total: {formatCurrency(selectedQuoteItems.reduce((sum, item) => sum + parseFloat(String(item.total)), 0))}
                   </p>
                 </div>
               </div>
