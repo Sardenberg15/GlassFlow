@@ -45,7 +45,7 @@ export default function Financeiro() {
   });
 
   const deleteTransactionMutation = useMutation({
-    mutationFn: (id: string) => apiRequest(`/api/transactions/${id}`, { method: "DELETE" }),
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/transactions/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
@@ -165,15 +165,12 @@ export default function Financeiro() {
     const formData = new FormData(e.currentTarget);
     
     try {
-      await apiRequest("/api/transactions", {
-        method: "POST",
-        body: JSON.stringify({
-          projectId: formData.get("projectId"),
-          type: formData.get("type"),
-          description: formData.get("description"),
-          value: formData.get("value"),
-          date: formData.get("date"),
-        }),
+      await apiRequest("POST", "/api/transactions", {
+        projectId: formData.get("projectId"),
+        type: formData.get("type"),
+        description: formData.get("description"),
+        value: formData.get("value"),
+        date: formData.get("date"),
       });
 
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
