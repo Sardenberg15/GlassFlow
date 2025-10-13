@@ -4,6 +4,7 @@ import {
   transactions,
   quotes,
   quoteItems,
+  projectFiles,
   type Client, 
   type InsertClient,
   type Project,
@@ -14,6 +15,8 @@ import {
   type InsertQuote,
   type QuoteItem,
   type InsertQuoteItem,
+  type ProjectFile,
+  type InsertProjectFile,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -53,6 +56,11 @@ export interface IStorage {
   getQuoteItems(quoteId: string): Promise<QuoteItem[]>;
   createQuoteItem(item: InsertQuoteItem): Promise<QuoteItem>;
   deleteQuoteItem(id: string): Promise<void>;
+  
+  // Project Files
+  getProjectFiles(projectId: string): Promise<ProjectFile[]>;
+  createProjectFile(file: InsertProjectFile): Promise<ProjectFile>;
+  deleteProjectFile(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -182,6 +190,20 @@ export class DatabaseStorage implements IStorage {
 
   async deleteQuoteItem(id: string): Promise<void> {
     await db.delete(quoteItems).where(eq(quoteItems.id, id));
+  }
+
+  // Project Files
+  async getProjectFiles(projectId: string): Promise<ProjectFile[]> {
+    return await db.select().from(projectFiles).where(eq(projectFiles.projectId, projectId)).orderBy(desc(projectFiles.createdAt));
+  }
+
+  async createProjectFile(insertFile: InsertProjectFile): Promise<ProjectFile> {
+    const [file] = await db.insert(projectFiles).values(insertFile).returning();
+    return file;
+  }
+
+  async deleteProjectFile(id: string): Promise<void> {
+    await db.delete(projectFiles).where(eq(projectFiles.id, id));
   }
 }
 

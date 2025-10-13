@@ -1,7 +1,8 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertClientSchema, insertProjectSchema, insertTransactionSchema, insertQuoteSchema, insertQuoteItemSchema } from "@shared/schema";
+import { insertClientSchema, insertProjectSchema, insertTransactionSchema, insertQuoteSchema, insertQuoteItemSchema, insertProjectFileSchema } from "@shared/schema";
+import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Clients Routes
@@ -297,6 +298,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete quote item" });
+    }
+  });
+
+  // Object Storage Routes
+  // NOTE: In production, these routes should be protected with authentication
+  app.get("/objects/:objectPath(*)", async (req, res) => {
+    const objectStorageService = new ObjectStorageService();
+    try {
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      objectStorageService.downloadObject(objectFile, res);
+    } catch (error) {
+      console.error("Error downloading file:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
+      }
+      return res.sendStatus(500);
+    }
+  });
+
+  app.post("/api/objects/upload", async (req, res) => {
+    try {
+      const objectStorageService = new ObjectStorageService();
+      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+      res.json({ uploadURL });
+    } catch (error) {
+      console.error("Error generating upload URL:", error);
+      res.status(500).json({ error: "Failed to generate upload URL" });
+    }
+  });
+
+  // Project Files Routes
+  app.get("/api/projects/:projectId/files", async (req, res) => {
+    try {
+      const files = await storage.getProjectFiles(req.params.projectId);
+      res.json(files);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch project files" });
+    }
+  });
+
+  app.post("/api/project-files", async (req, res) => {
+    try {
+      const validatedData = insertProjectFileSchema.parse(req.body);
+      
+      // Normalize the object path from the upload URL
+      const objectStorageService = new ObjectStorageService();
+      const normalizedPath = objectStorageService.normalizeObjectEntityPath(validatedData.objectPath);
+      
+      // Save with normalized path
+      const file = await storage.createProjectFile({
+        ...validatedData,
+        objectPath: normalizedPath,
+      });
+      
+      res.status(201).json(file);
+    } catch (error) {
+      console.error("Project file creation error:", error);
+      res.status(400).json({ error: "Invalid project file data" });
+    }
+  });
+
+  app.delete("/api/project-files/:id", async (req, res) => {
+    try {
+      await storage.deleteProjectFile(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete project file" });
     }
   });
 
