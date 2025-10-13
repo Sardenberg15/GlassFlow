@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import Dashboard from "@/pages/dashboard";
 import Clientes from "@/pages/clientes";
 import Projetos from "@/pages/projetos";
+import Orcamentos from "@/pages/orcamentos";
 import Financeiro from "@/pages/financeiro";
 import NotFound from "@/pages/not-found";
 
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/clientes" component={Clientes} />
       <Route path="/projetos" component={Projetos} />
+      <Route path="/orcamentos" component={Orcamentos} />
       <Route path="/financeiro" component={Financeiro} />
       <Route component={NotFound} />
     </Switch>

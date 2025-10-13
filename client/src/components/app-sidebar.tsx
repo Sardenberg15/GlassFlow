@@ -1,4 +1,4 @@
-import { LayoutDashboard, Users, FileText, DollarSign, Settings } from "lucide-react";
+import { LayoutDashboard, Users, FileText, DollarSign, Settings, FileCheck } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -29,6 +29,11 @@ const menuItems = [
     title: "Projetos",
     url: "/projetos",
     icon: FileText,
+  },
+  {
+    title: "Orçamentos",
+    url: "/orcamentos",
+    icon: FileCheck,
   },
   {
     title: "Financeiro",
