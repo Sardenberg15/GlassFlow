@@ -25,6 +25,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -141,6 +152,28 @@ export default function Orcamentos() {
       toast({
         title: "Status atualizado!",
         description: "O status do orçamento foi alterado.",
+      });
+    },
+  });
+
+  // Delete quote mutation
+  const deleteQuoteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/quotes/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quote-items"] });
+      toast({
+        title: "Orçamento excluído!",
+        description: "O orçamento foi removido com sucesso.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao excluir orçamento",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
@@ -382,7 +415,38 @@ export default function Orcamentos() {
                       <CardTitle className="text-lg">{quote.number}</CardTitle>
                       <p className="text-sm text-muted-foreground mt-1">{client?.name}</p>
                     </div>
-                    {getStatusBadge(quote.status)}
+                    <div className="flex items-center gap-1">
+                      {getStatusBadge(quote.status)}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            data-testid={`button-delete-quote-${quote.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir orçamento?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação não pode ser desfeita. O orçamento "{quote.number}" será permanentemente removido do sistema.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel data-testid="button-cancel-delete">Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteQuoteMutation.mutate(quote.id)}
+                              data-testid="button-confirm-delete"
+                              className="bg-destructive hover:bg-destructive/90"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">

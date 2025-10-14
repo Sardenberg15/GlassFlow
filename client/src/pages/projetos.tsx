@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, Search, Filter, Calendar, User } from "lucide-react";
+import { Plus, Search, Filter, Calendar, User, Trash2 } from "lucide-react";
 import { ProjectStatusBadge } from "@/components/project-status-badge";
 import { CartaoObras } from "@/components/cartao-obras";
 import { StatusWorkflow } from "@/components/status-workflow";
@@ -24,6 +24,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
@@ -127,6 +138,29 @@ export default function Projetos() {
     onError: (error: Error) => {
       toast({
         title: "Erro ao atualizar status",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete project mutation
+  const deleteProjectMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiRequest("DELETE", `/api/projects/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      toast({
+        title: "Projeto excluído!",
+        description: "O projeto foi removido com sucesso.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao excluir projeto",
         description: error.message,
         variant: "destructive",
       });
@@ -377,7 +411,39 @@ export default function Projetos() {
               <CardHeader className="space-y-3">
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-base line-clamp-2">{projeto.name}</CardTitle>
-                  <ProjectStatusBadge status={projeto.status as ProjectStatus} />
+                  <div className="flex items-center gap-1">
+                    <ProjectStatusBadge status={projeto.status as ProjectStatus} />
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          data-testid={`button-delete-projeto-${projeto.id}`}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir projeto?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação não pode ser desfeita. O projeto "{projeto.name}" e todas as suas transações serão permanentemente removidos.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel data-testid="button-cancel-delete">Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteProjectMutation.mutate(projeto.id)}
+                            data-testid="button-confirm-delete"
+                            className="bg-destructive hover:bg-destructive/90"
+                          >
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
