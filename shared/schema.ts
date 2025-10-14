@@ -53,6 +53,7 @@ export const quoteItems = pgTable("quote_items", {
   quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
+  imageUrl: text("image_url"), // URL da imagem/desenho do item
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
