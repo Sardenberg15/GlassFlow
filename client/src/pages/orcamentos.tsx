@@ -52,7 +52,20 @@ export default function Orcamentos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [openNew, setOpenNew] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
-  const [quoteItems, setQuoteItems] = useState<Array<{ description: string; quantity: string; unitPrice: string; imageUrl?: string }>>([
+  const [quoteItems, setQuoteItems] = useState<Array<{ 
+    description: string; 
+    quantity: string; 
+    width?: string;
+    height?: string;
+    colorThickness?: string;
+    profileColor?: string;
+    accessoryColor?: string;
+    line?: string;
+    deliveryDate?: string;
+    itemObservations?: string;
+    unitPrice: string; 
+    imageUrl?: string;
+  }>>([
     { description: "", quantity: "1", unitPrice: "0" }
   ]);
   const [uploadingImage, setUploadingImage] = useState<number | null>(null);
@@ -117,6 +130,14 @@ export default function Orcamentos() {
             quoteId: quote.id,
             description: item.description,
             quantity: item.quantity,
+            width: item.width || null,
+            height: item.height || null,
+            colorThickness: item.colorThickness || null,
+            profileColor: item.profileColor || null,
+            accessoryColor: item.accessoryColor || null,
+            line: item.line || null,
+            deliveryDate: item.deliveryDate || null,
+            itemObservations: item.itemObservations || null,
             unitPrice: item.unitPrice,
             total: total.toString(),
             imageUrl: item.imageUrl || null,
@@ -346,101 +367,184 @@ export default function Orcamentos() {
 
               <div className="space-y-2">
                 <Label>Itens do Orçamento</Label>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead className="w-24">Qtd.</TableHead>
-                      <TableHead className="w-32">Valor Unit.</TableHead>
-                      <TableHead className="w-32">Total</TableHead>
-                      <TableHead className="w-32">Imagem</TableHead>
-                      <TableHead className="w-16"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {quoteItems.map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell>
-                          <Input
-                            placeholder="Ex: Vidro temperado 8mm"
-                            value={item.description}
-                            onChange={(e) => updateItem(index, 'description', e.target.value)}
-                            data-testid={`input-item-desc-${index}`}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={item.quantity}
-                            onChange={(e) => updateItem(index, 'quantity', e.target.value)}
-                            data-testid={`input-item-qty-${index}`}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={item.unitPrice}
-                            onChange={(e) => updateItem(index, 'unitPrice', e.target.value)}
-                            data-testid={`input-item-price-${index}`}
-                          />
-                        </TableCell>
-                        <TableCell className="font-mono">
-                          {formatCurrency(parseFloat(item.quantity) * parseFloat(item.unitPrice))}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
+                {quoteItems.map((item, index) => (
+                  <Card key={index} className="p-4">
+                    <div className="flex items-start gap-4">
+                      <div className="flex-1 space-y-4">
+                        <div className="grid grid-cols-3 gap-3">
+                          <div className="col-span-3">
+                            <Label htmlFor={`desc-${index}`}>Descrição do Item *</Label>
                             <Input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) handleImageUpload(index, file);
-                              }}
-                              disabled={uploadingImage === index}
-                              className="hidden"
-                              id={`image-upload-${index}`}
-                              data-testid={`input-item-image-${index}`}
+                              id={`desc-${index}`}
+                              placeholder="Ex: BOX EM 'L', COM 05 FOLHAS..."
+                              value={item.description}
+                              onChange={(e) => updateItem(index, 'description', e.target.value)}
+                              data-testid={`input-item-desc-${index}`}
                             />
-                            <label htmlFor={`image-upload-${index}`}>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                disabled={uploadingImage === index}
-                                asChild
-                              >
-                                <span className="cursor-pointer">
-                                  {uploadingImage === index ? (
-                                    "Enviando..."
-                                  ) : item.imageUrl ? (
-                                    <ImageIcon className="h-4 w-4" />
-                                  ) : (
-                                    <Upload className="h-4 w-4" />
-                                  )}
-                                </span>
-                              </Button>
-                            </label>
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          {quoteItems.length > 1 && (
-                            <Button 
-                              type="button" 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => removeItem(index)}
-                              data-testid={`button-remove-item-${index}`}
+                          <div>
+                            <Label htmlFor={`qty-${index}`}>Qtde. *</Label>
+                            <Input
+                              id={`qty-${index}`}
+                              type="number"
+                              step="0.01"
+                              value={item.quantity}
+                              onChange={(e) => updateItem(index, 'quantity', e.target.value)}
+                              data-testid={`input-item-qty-${index}`}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`width-${index}`}>Largura (mm)</Label>
+                            <Input
+                              id={`width-${index}`}
+                              type="number"
+                              placeholder="Ex: 2300"
+                              value={item.width || ""}
+                              onChange={(e) => updateItem(index, 'width', e.target.value)}
+                              data-testid={`input-item-width-${index}`}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`height-${index}`}>Altura (mm)</Label>
+                            <Input
+                              id={`height-${index}`}
+                              type="number"
+                              placeholder="Ex: 1900"
+                              value={item.height || ""}
+                              onChange={(e) => updateItem(index, 'height', e.target.value)}
+                              data-testid={`input-item-height-${index}`}
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <Label htmlFor={`color-${index}`}>Cor e Espessura</Label>
+                            <Input
+                              id={`color-${index}`}
+                              placeholder="Ex: TEMP. INCOLOR 08MM"
+                              value={item.colorThickness || ""}
+                              onChange={(e) => updateItem(index, 'colorThickness', e.target.value)}
+                              data-testid={`input-item-color-${index}`}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`price-${index}`}>Vlr. Unit. *</Label>
+                            <Input
+                              id={`price-${index}`}
+                              type="number"
+                              step="0.01"
+                              value={item.unitPrice}
+                              onChange={(e) => updateItem(index, 'unitPrice', e.target.value)}
+                              data-testid={`input-item-price-${index}`}
+                            />
+                          </div>
+                          <div className="col-span-2">
+                            <Label htmlFor={`profile-${index}`}>*Cor Perfil</Label>
+                            <Input
+                              id={`profile-${index}`}
+                              placeholder="Ex: BRANCO BRILHO RAL9003"
+                              value={item.profileColor || ""}
+                              onChange={(e) => updateItem(index, 'profileColor', e.target.value)}
+                              data-testid={`input-item-profile-${index}`}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`accessory-${index}`}>*Cor Acessório</Label>
+                            <Input
+                              id={`accessory-${index}`}
+                              placeholder="Ex: BRANCO"
+                              value={item.accessoryColor || ""}
+                              onChange={(e) => updateItem(index, 'accessoryColor', e.target.value)}
+                              data-testid={`input-item-accessory-${index}`}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`line-${index}`}>Linha</Label>
+                            <Input
+                              id={`line-${index}`}
+                              placeholder="Ex: DIVERSOS"
+                              value={item.line || ""}
+                              onChange={(e) => updateItem(index, 'line', e.target.value)}
+                              data-testid={`input-item-line-${index}`}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor={`delivery-${index}`}>Data Entrega</Label>
+                            <Input
+                              id={`delivery-${index}`}
+                              type="date"
+                              value={item.deliveryDate || ""}
+                              onChange={(e) => updateItem(index, 'deliveryDate', e.target.value)}
+                              data-testid={`input-item-delivery-${index}`}
+                            />
+                          </div>
+                          <div>
+                            <Label>Total</Label>
+                            <div className="h-9 px-3 flex items-center border rounded-md font-mono bg-muted">
+                              {formatCurrency(parseFloat(item.quantity || "0") * parseFloat(item.unitPrice || "0"))}
+                            </div>
+                          </div>
+                          <div className="col-span-3">
+                            <Label htmlFor={`obs-${index}`}>Observações do Item</Label>
+                            <Textarea
+                              id={`obs-${index}`}
+                              placeholder="Ex: *COM COLUNA DE 4' X 2', SUPERIOR."
+                              value={item.itemObservations || ""}
+                              onChange={(e) => updateItem(index, 'itemObservations', e.target.value)}
+                              rows={2}
+                              data-testid={`textarea-item-obs-${index}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <div>
+                          <Label>Imagem</Label>
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleImageUpload(index, file);
+                            }}
+                            disabled={uploadingImage === index}
+                            className="hidden"
+                            id={`image-upload-${index}`}
+                            data-testid={`input-item-image-${index}`}
+                          />
+                          <label htmlFor={`image-upload-${index}`}>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={uploadingImage === index}
+                              asChild
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <span className="cursor-pointer">
+                                {uploadingImage === index ? (
+                                  "Enviando..."
+                                ) : item.imageUrl ? (
+                                  <ImageIcon className="h-4 w-4" />
+                                ) : (
+                                  <Upload className="h-4 w-4" />
+                                )}
+                              </span>
                             </Button>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                          </label>
+                        </div>
+                        {quoteItems.length > 1 && (
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="icon"
+                            onClick={() => removeItem(index)}
+                            data-testid={`button-remove-item-${index}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
                 <div className="flex justify-between items-center pt-2">
                   <Button type="button" variant="outline" onClick={addItem} data-testid="button-add-item">
                     <Plus className="h-4 w-4 mr-2" />
