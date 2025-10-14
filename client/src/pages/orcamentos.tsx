@@ -227,9 +227,20 @@ export default function Orcamentos() {
         throw new Error("Erro ao fazer upload da imagem");
       }
 
-      // Update item with image URL
+      // Extract the object path from the upload URL to create a public access path
+      // The upload URL is like: https://storage.googleapis.com/bucket/path/to/file?X-Goog-...
+      // We need to convert it to: /objects/uploads/uuid
+      const url = new URL(uploadURL);
+      const pathname = url.pathname; // e.g., /bucket-name/PRIVATE_OBJECT_DIR/uploads/uuid
+      
+      // Extract the part after the bucket and private dir to create /objects/ path
+      const pathParts = pathname.split('/uploads/');
+      const objectId = pathParts[pathParts.length - 1].split('?')[0];
+      const publicPath = `/objects/uploads/${objectId}`;
+
+      // Update item with normalized public path
       const updated = [...quoteItems];
-      updated[index] = { ...updated[index], imageUrl: uploadURL };
+      updated[index] = { ...updated[index], imageUrl: publicPath };
       setQuoteItems(updated);
 
       toast({
