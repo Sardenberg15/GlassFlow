@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Mail, Phone, Building, Trash2 } from "lucide-react";
+import { Plus, Search, Mail, Phone, Building, Trash2, MapPin, FileText } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -43,7 +43,7 @@ export default function Clientes() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; contact: string; email: string; phone: string }) => {
+    mutationFn: async (data: { name: string; contact: string; email: string; phone: string; address?: string; cnpjCpf?: string }) => {
       const res = await apiRequest("POST", "/api/clients", data);
       return await res.json();
     },
@@ -102,6 +102,8 @@ export default function Clientes() {
       contact: formData.get("contact") as string,
       email: formData.get("email") as string,
       phone: formData.get("phone") as string,
+      address: formData.get("address") as string,
+      cnpjCpf: formData.get("cnpjCpf") as string,
     });
   };
 
@@ -140,6 +142,14 @@ export default function Clientes() {
               <div className="space-y-2">
                 <Label htmlFor="phone">Telefone</Label>
                 <Input id="phone" name="phone" placeholder="(11) 99999-9999" required data-testid="input-cliente-phone" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="address">Endereço</Label>
+                <Input id="address" name="address" placeholder="Rua, número, complemento, bairro, cidade" data-testid="input-cliente-address" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cnpjCpf">CNPJ/CPF</Label>
+                <Input id="cnpjCpf" name="cnpjCpf" placeholder="00.000.000/0000-00 ou 000.000.000-00" data-testid="input-cliente-cnpj-cpf" />
               </div>
               <Button type="submit" className="w-full" disabled={createMutation.isPending} data-testid="button-submit-cliente">
                 {createMutation.isPending ? "Cadastrando..." : "Cadastrar Cliente"}
@@ -228,14 +238,28 @@ export default function Clientes() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Mail className="h-4 w-4" />
-                    <span>{cliente.email}</span>
-                  </div>
+                  {cliente.email && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Mail className="h-4 w-4" />
+                      <span>{cliente.email}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2 text-muted-foreground">
                     <Phone className="h-4 w-4" />
                     <span>{cliente.phone}</span>
                   </div>
+                  {cliente.address && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <MapPin className="h-4 w-4" />
+                      <span>{cliente.address}</span>
+                    </div>
+                  )}
+                  {cliente.cnpjCpf && (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <FileText className="h-4 w-4" />
+                      <span>{cliente.cnpjCpf}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="pt-2 border-t">
                   <p className="text-sm text-muted-foreground">
