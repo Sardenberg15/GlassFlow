@@ -66,9 +66,11 @@ Preferred communication style: Simple, everyday language.
 - Schema-first approach with shared types between client and server
 
 **Data Models:**
-- **Clients**: Customer information (name, contact, email, phone)
+- **Clients**: Customer information (name, contact, email [optional], phone, address [optional], CNPJ/CPF [optional])
 - **Projects**: Project details with status workflow (orcamento → aprovado → execucao → finalizado/cancelado)
 - **Transactions**: Financial records (receita/despesa) linked to projects
+- **Quotes**: Quotation details with client reference, number, status, validity date, and observations
+- **Quote Items**: Individual items in quotes with description, quantity, unit price, total, and optional image/drawing
 - **Project Files**: File attachments for projects (comprovantes, notas fiscais) with metadata and categorization
 - Relational structure with foreign key constraints and cascade deletes
 
@@ -91,6 +93,31 @@ Preferred communication style: Simple, everyday language.
 - ObjectStorageService handles signed URLs for secure upload/download
 - API routes: POST /api/projects/:id/files, GET /api/files/:id/download, DELETE /api/files/:id
 - Uppy CSS loaded via CDN to avoid bundling issues
+
+**Quotation System (Orçamentos Page):**
+- Complete quote generation with PDF export capability
+- Quote management with CRUD operations and delete confirmation dialogs
+- Quote items table with dynamic row addition/removal
+- Image upload for individual quote items:
+  - Upload interface integrated into items table
+  - Uses Replit Object Storage for image storage
+  - Upload flow: Generate signed URL → Upload to storage → Save public URL path
+  - Stores stable public paths (/objects/uploads/{uuid}) for persistent access
+  - Visual feedback during upload (loading state, icons)
+  - Accepts image files only (image/*)
+- PDF template features:
+  - Company branding with contact info (phone: 22 99821-3739, email: alpheu25@gmail.com)
+  - Complete client data display (name, contact, email, phone, address, CNPJ/CPF)
+  - Itemized table with description, quantity, unit price, total, and images
+  - Conditional rendering (shows only fields with data)
+  - Image display in PDF (80x60px thumbnails alongside items)
+  - Professional styling with color-coded headers
+  - Total calculation and observations section
+- Quote number auto-generation (format: ORC-YYYY-NNN)
+- Status badges (pendente, aprovado, recusado)
+- Client selection dropdown with search
+- Validity date picker
+- Observations field for additional notes
 
 **Financial Management System (Financeiro Page):**
 - Complete financial analytics dashboard with real-time data
