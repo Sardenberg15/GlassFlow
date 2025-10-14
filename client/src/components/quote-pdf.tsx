@@ -73,10 +73,10 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   col1: {
-    width: '50%',
+    width: '35%',
   },
   col2: {
-    width: '15%',
+    width: '12%',
     textAlign: 'right',
   },
   col3: {
@@ -84,9 +84,18 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   col4: {
-    width: '20%',
+    width: '15%',
     textAlign: 'right',
     fontWeight: 'bold',
+  },
+  col5: {
+    width: '23%',
+    textAlign: 'center',
+  },
+  itemImage: {
+    width: 80,
+    height: 60,
+    objectFit: 'cover',
   },
   totalSection: {
     marginTop: 20,
@@ -197,6 +206,7 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
               <Text style={styles.col2}>Qtd.</Text>
               <Text style={styles.col3}>Valor Unit.</Text>
               <Text style={styles.col4}>Total</Text>
+              <Text style={styles.col5}>Imagem</Text>
             </View>
             {items.map((item, index) => (
               <View key={item.id} style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
@@ -208,6 +218,14 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
                 <Text style={styles.col4}>
                   R$ {parseFloat(String(item.total)).toFixed(2)}
                 </Text>
+                <View style={styles.col5}>
+                  {item.imageUrl && (
+                    <Image 
+                      src={item.imageUrl} 
+                      style={styles.itemImage}
+                    />
+                  )}
+                </View>
               </View>
             ))}
           </View>
