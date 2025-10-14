@@ -42,6 +42,8 @@ export const quotes = pgTable("quotes", {
   number: text("number").notNull(), // número do orçamento (ex: ORC-2025-001)
   status: text("status").notNull().default("pendente"), // pendente, aprovado, recusado
   validUntil: text("valid_until").notNull(), // data de validade
+  local: text("local"), // LOCAL/AMBIENTE
+  tipo: text("tipo"), // TIPO
   observations: text("observations"), // observações gerais
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -51,6 +53,14 @@ export const quoteItems = pgTable("quote_items", {
   quoteId: varchar("quote_id").notNull().references(() => quotes.id, { onDelete: 'cascade' }),
   description: text("description").notNull(),
   quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
+  width: decimal("width", { precision: 10, scale: 2 }), // LARGURA
+  height: decimal("height", { precision: 10, scale: 2 }), // ALTURA
+  colorThickness: text("color_thickness"), // COR E ESPESSURA
+  profileColor: text("profile_color"), // *COR PERFIL
+  accessoryColor: text("accessory_color"), // *COR ACESSÓRIO
+  line: text("line"), // LINHA
+  deliveryDate: text("delivery_date"), // DATA ENTREGA
+  itemObservations: text("item_observations"), // OBSERVAÇÕES DESTE ITEM
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   imageUrl: text("image_url"), // URL da imagem/desenho do item
