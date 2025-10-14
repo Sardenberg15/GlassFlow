@@ -95,29 +95,44 @@ Preferred communication style: Simple, everyday language.
 - Uppy CSS loaded via CDN to avoid bundling issues
 
 **Quotation System (Orçamentos Page):**
-- Complete quote generation with PDF export capability
+- Complete quote generation with professional PDF export
 - Quote management with CRUD operations and delete confirmation dialogs
-- Quote items table with dynamic row addition/removal
+- Professional layout based on industry-standard quotation format
+- Quote header fields: LOCAL/AMBIENTE, TIPO (optional)
+- Quote items with comprehensive card-based form:
+  - Descrição do Item (required)
+  - Quantidade (required, supports decimals)
+  - Largura (mm), Altura (mm) (optional)
+  - Cor e Espessura (optional)
+  - Valor Unitário (required)
+  - Cor Perfil, Cor Acessório (optional)
+  - Linha, Data de Entrega (optional)
+  - Observações do Item (optional textarea)
+  - Upload de Imagem (optional)
 - Image upload for individual quote items:
-  - Upload interface integrated into items table
+  - Upload interface integrated into item cards
   - Uses Replit Object Storage for image storage
   - Upload flow: Generate signed URL → Upload to storage → Save public URL path
   - Stores stable public paths (/objects/uploads/{uuid}) for persistent access
   - Visual feedback during upload (loading state, icons)
   - Accepts image files only (image/*)
-- PDF template features:
+- Professional PDF template:
   - Company branding with contact info (phone: 22 99821-3739, email: alpheu25@gmail.com)
-  - Complete client data display (name, contact, email, phone, address, CNPJ/CPF)
-  - Itemized table with description, quantity, unit price, total, and images
-  - Conditional rendering (shows only fields with data)
-  - Image display in PDF (80x60px thumbnails alongside items)
-  - Professional styling with color-coded headers
-  - Total calculation and observations section
+  - LOCAL/AMBIENTE and TIPO header display
+  - Complete client data section with all fields
+  - Per-item layout:
+    - Image positioned on left (if available)
+    - Item description and details on right (cor perfil, cor acessório, linha, data entrega)
+    - Professional table: ITEM | QTDE. | LARGURA | ALTURA | COR E ESPESSURA | VLR. UNIT. | VLR. TOTAL
+    - Item observations section below table
+  - Quantity formatting with pt-BR locale (preserves decimals: 1.5 → "1,5")
+  - Total calculation with observations section
+  - Legal footer text
 - Quote number auto-generation (format: ORC-YYYY-NNN)
 - Status badges (pendente, aprovado, recusado)
 - Client selection dropdown with search
 - Validity date picker
-- Observations field for additional notes
+- General observations field for quote-level notes
 
 **Financial Management System (Financeiro Page):**
 - Complete financial analytics dashboard with real-time data
