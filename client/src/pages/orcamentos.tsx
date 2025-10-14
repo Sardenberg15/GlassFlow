@@ -101,6 +101,8 @@ export default function Orcamentos() {
         number: generateQuoteNumber(),
         status: "pendente",
         validUntil: data.get("validUntil") as string,
+        local: data.get("local") as string || "",
+        tipo: data.get("tipo") as string || "",
         observations: data.get("observations") as string || "",
       };
       
@@ -317,6 +319,27 @@ export default function Orcamentos() {
                     type="date" 
                     data-testid="input-valid-until"
                     required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="local">Local/Ambiente</Label>
+                  <Input 
+                    id="local" 
+                    name="local" 
+                    placeholder="Ex: Banheiro Social"
+                    data-testid="input-local"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tipo">Tipo</Label>
+                  <Input 
+                    id="tipo" 
+                    name="tipo" 
+                    placeholder="Ex: Box de Vidro"
+                    data-testid="input-tipo"
                   />
                 </div>
               </div>
