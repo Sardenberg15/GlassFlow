@@ -1,136 +1,175 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import type { Quote, QuoteItem, Client } from '@shared/schema';
 
-// Styles para o PDF
 const styles = StyleSheet.create({
   page: {
-    padding: 40,
-    fontSize: 10,
+    padding: 30,
+    fontSize: 9,
     fontFamily: 'Helvetica',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 30,
-    borderBottom: '2 solid #2563EB',
-    paddingBottom: 15,
-  },
-  logo: {
-    width: 60,
-    height: 60,
+    marginBottom: 15,
+    borderBottom: '2 solid #000',
+    paddingBottom: 10,
   },
   companyInfo: {
-    textAlign: 'right',
+    fontSize: 8,
   },
   title: {
-    fontSize: 24,
-    color: '#2563EB',
-    marginBottom: 5,
-  },
-  subtitle: {
-    fontSize: 10,
-    color: '#666',
-  },
-  section: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 10,
-    color: '#2563EB',
+    marginBottom: 3,
   },
-  infoRow: {
+  headerRight: {
+    textAlign: 'right',
+  },
+  topSection: {
     flexDirection: 'row',
-    marginBottom: 5,
+    justifyContent: 'space-between',
+    marginBottom: 10,
+    paddingVertical: 5,
+    borderBottom: '1 solid #000',
   },
-  label: {
-    fontWeight: 'bold',
-    width: 100,
-  },
-  value: {
+  localTipo: {
     flex: 1,
   },
+  boldText: {
+    fontWeight: 'bold',
+  },
+  itemContainer: {
+    marginBottom: 20,
+  },
+  itemHeader: {
+    flexDirection: 'row',
+    marginBottom: 10,
+    gap: 10,
+  },
+  imageSection: {
+    width: 120,
+    padding: 5,
+    border: '1 solid #000',
+  },
+  itemImage: {
+    width: 110,
+    height: 110,
+    objectFit: 'contain',
+  },
+  itemDetails: {
+    flex: 1,
+  },
+  description: {
+    fontSize: 10,
+    marginBottom: 5,
+    fontWeight: 'bold',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    marginBottom: 3,
+    fontSize: 8,
+  },
+  detailLabel: {
+    fontWeight: 'bold',
+    minWidth: 100,
+  },
   table: {
+    border: '1 solid #000',
     marginTop: 10,
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#2563EB',
     color: 'white',
-    padding: 8,
+    padding: 5,
+    fontSize: 8,
     fontWeight: 'bold',
   },
   tableRow: {
     flexDirection: 'row',
-    borderBottom: '1 solid #e5e7eb',
-    padding: 8,
+    borderTop: '1 solid #000',
+    padding: 5,
+    fontSize: 8,
   },
-  tableRowAlt: {
-    flexDirection: 'row',
-    borderBottom: '1 solid #e5e7eb',
-    backgroundColor: '#f9fafb',
-    padding: 8,
+  colItem: { width: '5%', textAlign: 'center' },
+  colQtde: { width: '8%', textAlign: 'center' },
+  colLargura: { width: '12%', textAlign: 'center' },
+  colAltura: { width: '12%', textAlign: 'center' },
+  colCor: { width: '28%' },
+  colVlrUnit: { width: '15%', textAlign: 'right' },
+  colVlrTotal: { width: '20%', textAlign: 'right' },
+  itemObservations: {
+    marginTop: 5,
+    padding: 5,
+    backgroundColor: '#f9f9f9',
+    fontSize: 8,
   },
-  col1: {
-    width: '35%',
-  },
-  col2: {
-    width: '12%',
-    textAlign: 'right',
-  },
-  col3: {
-    width: '15%',
-    textAlign: 'right',
-  },
-  col4: {
-    width: '15%',
-    textAlign: 'right',
+  obsTitle: {
     fontWeight: 'bold',
+    fontSize: 9,
+    marginBottom: 3,
   },
-  col5: {
-    width: '23%',
-    textAlign: 'center',
-  },
-  itemImage: {
-    width: 80,
-    height: 60,
-    objectFit: 'cover',
+  obsImportant: {
+    color: '#dc2626',
+    fontSize: 8,
+    marginTop: 3,
   },
   totalSection: {
-    marginTop: 20,
+    marginTop: 15,
     alignItems: 'flex-end',
+    paddingRight: 20,
   },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: 200,
-    padding: 5,
-  },
-  totalLabel: {
+  totalText: {
+    fontSize: 14,
     fontWeight: 'bold',
   },
-  totalValue: {
+  generalObservations: {
+    marginTop: 20,
+    padding: 10,
+    border: '1 solid #000',
+  },
+  obsHeader: {
+    fontSize: 10,
     fontWeight: 'bold',
-    fontSize: 16,
-    color: '#2563EB',
+    marginBottom: 5,
+    textAlign: 'center',
+    backgroundColor: '#f3f4f6',
+    padding: 3,
+  },
+  obsContent: {
+    fontSize: 8,
+    marginTop: 5,
   },
   footer: {
     position: 'absolute',
-    bottom: 40,
-    left: 40,
-    right: 40,
+    bottom: 20,
+    left: 30,
+    right: 30,
     textAlign: 'center',
+    fontSize: 8,
     color: '#666',
-    fontSize: 9,
     paddingTop: 10,
     borderTop: '1 solid #e5e7eb',
   },
-  observations: {
-    marginTop: 20,
-    padding: 10,
-    backgroundColor: '#f9fafb',
-    borderLeft: '3 solid #2563EB',
+  clientSection: {
+    marginBottom: 15,
+    padding: 8,
+    backgroundColor: '#f9f9f9',
+    border: '1 solid #e5e7eb',
+  },
+  clientTitle: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginBottom: 5,
+  },
+  clientRow: {
+    flexDirection: 'row',
+    fontSize: 8,
+    marginBottom: 2,
+  },
+  clientLabel: {
+    fontWeight: 'bold',
+    width: 80,
   },
 });
 
@@ -150,108 +189,169 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
         <View style={styles.header}>
           <View>
             <Text style={styles.title}>HelpGlass</Text>
-            <Text style={styles.subtitle}>Soluções em Vidros e Espelhos</Text>
-            <Text style={styles.subtitle}>Telefone: (22) 99821-3739</Text>
-            <Text style={styles.subtitle}>Email: alpheu25@gmail.com</Text>
+            <Text style={styles.companyInfo}>Soluções em Vidros e Espelhos</Text>
+            <Text style={styles.companyInfo}>Telefone: (22) 99821-3739</Text>
+            <Text style={styles.companyInfo}>Email: alpheu25@gmail.com</Text>
           </View>
-          <View style={styles.companyInfo}>
-            <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>ORÇAMENTO</Text>
-            <Text>Nº {quote.number}</Text>
-            <Text>Data: {new Date(quote.createdAt).toLocaleDateString('pt-BR')}</Text>
-            <Text>Validade: {new Date(quote.validUntil).toLocaleDateString('pt-BR')}</Text>
+          <View style={styles.headerRight}>
+            <Text style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 3 }}>ORÇAMENTO</Text>
+            <Text style={styles.companyInfo}>Nº {quote.number}</Text>
+            <Text style={styles.companyInfo}>Data: {new Date(quote.createdAt).toLocaleDateString('pt-BR')}</Text>
+            <Text style={styles.companyInfo}>Validade: {new Date(quote.validUntil).toLocaleDateString('pt-BR')}</Text>
+          </View>
+        </View>
+
+        {/* Local/Ambiente e Tipo */}
+        <View style={styles.topSection}>
+          <View style={styles.localTipo}>
+            <Text>
+              <Text style={styles.boldText}>*LOCAL/AMBIENTE: </Text>
+              <Text>{quote.local || ''}</Text>
+            </Text>
+          </View>
+          <View style={{ textAlign: 'right' }}>
+            <Text>
+              <Text style={styles.boldText}>TIPO: </Text>
+              <Text>{quote.tipo || ''}</Text>
+            </Text>
           </View>
         </View>
 
         {/* Cliente */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Dados do Cliente</Text>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Nome:</Text>
-            <Text style={styles.value}>{client.name}</Text>
+        <View style={styles.clientSection}>
+          <Text style={styles.clientTitle}>DADOS DO CLIENTE</Text>
+          <View style={styles.clientRow}>
+            <Text style={styles.clientLabel}>Nome:</Text>
+            <Text>{client.name}</Text>
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Contato:</Text>
-            <Text style={styles.value}>{client.contact}</Text>
+          <View style={styles.clientRow}>
+            <Text style={styles.clientLabel}>Contato:</Text>
+            <Text>{client.contact}</Text>
           </View>
           {client.email && (
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Email:</Text>
-              <Text style={styles.value}>{client.email}</Text>
+            <View style={styles.clientRow}>
+              <Text style={styles.clientLabel}>Email:</Text>
+              <Text>{client.email}</Text>
             </View>
           )}
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Telefone:</Text>
-            <Text style={styles.value}>{client.phone}</Text>
+          <View style={styles.clientRow}>
+            <Text style={styles.clientLabel}>Telefone:</Text>
+            <Text>{client.phone}</Text>
           </View>
           {client.address && (
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>Endereço:</Text>
-              <Text style={styles.value}>{client.address}</Text>
+            <View style={styles.clientRow}>
+              <Text style={styles.clientLabel}>Endereço:</Text>
+              <Text>{client.address}</Text>
             </View>
           )}
           {client.cnpjCpf && (
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>CNPJ/CPF:</Text>
-              <Text style={styles.value}>{client.cnpjCpf}</Text>
+            <View style={styles.clientRow}>
+              <Text style={styles.clientLabel}>CNPJ/CPF:</Text>
+              <Text>{client.cnpjCpf}</Text>
             </View>
           )}
         </View>
 
-        {/* Itens do Orçamento */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Itens do Orçamento</Text>
-          <View style={styles.table}>
-            <View style={styles.tableHeader}>
-              <Text style={styles.col1}>Descrição</Text>
-              <Text style={styles.col2}>Qtd.</Text>
-              <Text style={styles.col3}>Valor Unit.</Text>
-              <Text style={styles.col4}>Total</Text>
-              <Text style={styles.col5}>Imagem</Text>
-            </View>
-            {items.map((item, index) => (
-              <View key={item.id} style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-                <Text style={styles.col1}>{item.description}</Text>
-                <Text style={styles.col2}>{parseFloat(String(item.quantity)).toFixed(2)}</Text>
-                <Text style={styles.col3}>
-                  R$ {parseFloat(String(item.unitPrice)).toFixed(2)}
-                </Text>
-                <Text style={styles.col4}>
-                  R$ {parseFloat(String(item.total)).toFixed(2)}
-                </Text>
-                <View style={styles.col5}>
-                  {item.imageUrl && (
-                    <Image 
-                      src={item.imageUrl} 
-                      style={styles.itemImage}
-                    />
+        {/* Items */}
+        {items.map((item, index) => (
+          <View key={item.id} style={styles.itemContainer} wrap={false}>
+            {/* Item Header with Image and Details */}
+            <View style={styles.itemHeader}>
+              {/* Image Section */}
+              {item.imageUrl && (
+                <View style={styles.imageSection}>
+                  <Image 
+                    src={item.imageUrl} 
+                    style={styles.itemImage}
+                  />
+                </View>
+              )}
+              
+              {/* Item Details */}
+              <View style={styles.itemDetails}>
+                <Text style={styles.description}>{item.description}</Text>
+                
+                {item.profileColor && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>*COR PERFIL:</Text>
+                    <Text>{item.profileColor}</Text>
+                  </View>
+                )}
+                
+                {item.accessoryColor && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>*COR ACESSÓRIO:</Text>
+                    <Text>{item.accessoryColor}</Text>
+                  </View>
+                )}
+                
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
+                  {item.line && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>LINHA:</Text>
+                      <Text>{item.line}</Text>
+                    </View>
+                  )}
+                  {item.deliveryDate && (
+                    <View style={styles.detailRow}>
+                      <Text style={styles.detailLabel}>DATA ENTREGA:</Text>
+                      <Text>{new Date(item.deliveryDate).toLocaleDateString('pt-BR')}</Text>
+                    </View>
                   )}
                 </View>
               </View>
-            ))}
-          </View>
-
-          <View style={styles.totalSection}>
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>TOTAL:</Text>
-              <Text style={styles.totalValue}>
-                R$ {total.toFixed(2)}
-              </Text>
             </View>
+
+            {/* Table */}
+            <View style={styles.table}>
+              <View style={styles.tableHeader}>
+                <Text style={styles.colItem}>ITEM</Text>
+                <Text style={styles.colQtde}>QTDE.</Text>
+                <Text style={styles.colLargura}>LARGURA:</Text>
+                <Text style={styles.colAltura}>ALTURA:</Text>
+                <Text style={styles.colCor}>COR E ESPESSURA</Text>
+                <Text style={styles.colVlrUnit}>VLR. UNIT.</Text>
+                <Text style={styles.colVlrTotal}>VLR. TOTAL</Text>
+              </View>
+              <View style={styles.tableRow}>
+                <Text style={styles.colItem}>{index + 1}</Text>
+                <Text style={styles.colQtde}>{parseFloat(String(item.quantity)).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</Text>
+                <Text style={styles.colLargura}>{item.width || '-'}</Text>
+                <Text style={styles.colAltura}>{item.height || '-'}</Text>
+                <Text style={styles.colCor}>{item.colorThickness || '-'}</Text>
+                <Text style={styles.colVlrUnit}>R$ {parseFloat(String(item.unitPrice)).toFixed(2)}</Text>
+                <Text style={styles.colVlrTotal}>R$ {parseFloat(String(item.total)).toFixed(2)}</Text>
+              </View>
+            </View>
+
+            {/* Item Observations */}
+            {item.itemObservations && (
+              <View style={styles.itemObservations}>
+                <Text style={styles.obsTitle}>📋 OBSERVAÇÕES DESTE ITEM</Text>
+                <Text style={styles.obsImportant}>{item.itemObservations}</Text>
+              </View>
+            )}
           </View>
+        ))}
+
+        {/* Total */}
+        <View style={styles.totalSection}>
+          <Text style={styles.totalText}>VALOR TOTAL: R$ {total.toFixed(2)}</Text>
         </View>
 
-        {/* Observações */}
+        {/* General Observations */}
         {quote.observations && (
-          <View style={styles.observations}>
-            <Text style={{ fontWeight: 'bold', marginBottom: 5 }}>Observações:</Text>
-            <Text>{quote.observations}</Text>
+          <View style={styles.generalObservations}>
+            <Text style={styles.obsHeader}>OBSERVAÇÕES</Text>
+            <Text style={styles.obsContent}>{quote.observations}</Text>
           </View>
         )}
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text>Este orçamento é válido até {new Date(quote.validUntil).toLocaleDateString('pt-BR')}</Text>
-          <Text>HelpGlass - Soluções em Vidros e Espelhos</Text>
+          <Text>AS INFORMAÇÕES ACIMA APRESENTADAS FORAM FORNECIDAS PELO VENDEDOR, SENDO SUA RESPONSABILIDADE PELA VERACIDADE E PRECISÃO DAS MESMAS.</Text>
+          <Text style={{ marginTop: 3 }}>A VALIDADE DO ORÇAMENTO: 05 DIAS ÚTEIS OU REPASSE DE NOVOS PREÇOS DE NOSSOS FORNECEDORES.</Text>
+          <Text style={{ marginTop: 5, fontWeight: 'bold' }}>HelpGlass - Soluções em Vidros e Espelhos - (22) 99821-3739</Text>
         </View>
       </Page>
     </Document>
