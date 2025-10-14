@@ -164,14 +164,28 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
             <Text style={styles.label}>Contato:</Text>
             <Text style={styles.value}>{client.contact}</Text>
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.label}>Email:</Text>
-            <Text style={styles.value}>{client.email}</Text>
-          </View>
+          {client.email && (
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Email:</Text>
+              <Text style={styles.value}>{client.email}</Text>
+            </View>
+          )}
           <View style={styles.infoRow}>
             <Text style={styles.label}>Telefone:</Text>
             <Text style={styles.value}>{client.phone}</Text>
           </View>
+          {client.address && (
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>Endereço:</Text>
+              <Text style={styles.value}>{client.address}</Text>
+            </View>
+          )}
+          {client.cnpjCpf && (
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>CNPJ/CPF:</Text>
+              <Text style={styles.value}>{client.cnpjCpf}</Text>
+            </View>
+          )}
         </View>
 
         {/* Itens do Orçamento */}
