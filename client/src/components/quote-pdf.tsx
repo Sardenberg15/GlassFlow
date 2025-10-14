@@ -349,7 +349,6 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text>AS INFORMAÇÕES ACIMA APRESENTADAS FORAM FORNECIDAS PELO VENDEDOR, SENDO SUA RESPONSABILIDADE PELA VERACIDADE E PRECISÃO DAS MESMAS.</Text>
           <Text style={{ marginTop: 3 }}>A VALIDADE DO ORÇAMENTO: 05 DIAS ÚTEIS OU REPASSE DE NOVOS PREÇOS DE NOSSOS FORNECEDORES.</Text>
           <Text style={{ marginTop: 5, fontWeight: 'bold' }}>HelpGlass - Soluções em Vidros e Espelhos - (22) 99821-3739</Text>
         </View>
