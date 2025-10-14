@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, FileText, Download, Trash2, Eye } from "lucide-react";
+import { Plus, Search, FileText, Download, Trash2, Eye, Image as ImageIcon, Upload } from "lucide-react";
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { QuotePDF } from "@/components/quote-pdf";
 import {
@@ -52,9 +52,10 @@ export default function Orcamentos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [openNew, setOpenNew] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
-  const [quoteItems, setQuoteItems] = useState<Array<{ description: string; quantity: string; unitPrice: string }>>([
+  const [quoteItems, setQuoteItems] = useState<Array<{ description: string; quantity: string; unitPrice: string; imageUrl?: string }>>([
     { description: "", quantity: "1", unitPrice: "0" }
   ]);
+  const [uploadingImage, setUploadingImage] = useState<number | null>(null);
   const { toast } = useToast();
 
   // Fetch quotes
@@ -116,6 +117,7 @@ export default function Orcamentos() {
             quantity: item.quantity,
             unitPrice: item.unitPrice,
             total: total.toString(),
+            imageUrl: item.imageUrl || null,
           });
         }
       }
@@ -204,6 +206,47 @@ export default function Orcamentos() {
     }, 0);
   };
 
+  const handleImageUpload = async (index: number, file: File) => {
+    try {
+      setUploadingImage(index);
+
+      // Get upload URL
+      const uploadResponse = await apiRequest("POST", "/api/objects/upload");
+      const { uploadURL } = await uploadResponse.json();
+
+      // Upload file
+      const uploadResult = await fetch(uploadURL, {
+        method: "PUT",
+        body: file,
+        headers: {
+          "Content-Type": file.type,
+        },
+      });
+
+      if (!uploadResult.ok) {
+        throw new Error("Erro ao fazer upload da imagem");
+      }
+
+      // Update item with image URL
+      const updated = [...quoteItems];
+      updated[index] = { ...updated[index], imageUrl: uploadURL };
+      setQuoteItems(updated);
+
+      toast({
+        title: "Imagem adicionada!",
+        description: "A imagem foi carregada com sucesso.",
+      });
+    } catch (error) {
+      toast({
+        title: "Erro ao fazer upload",
+        description: "Não foi possível carregar a imagem.",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingImage(null);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "outline"> = {
       pendente: "secondary",
@@ -276,6 +319,7 @@ export default function Orcamentos() {
                       <TableHead className="w-24">Qtd.</TableHead>
                       <TableHead className="w-32">Valor Unit.</TableHead>
                       <TableHead className="w-32">Total</TableHead>
+                      <TableHead className="w-32">Imagem</TableHead>
                       <TableHead className="w-16"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -310,6 +354,41 @@ export default function Orcamentos() {
                         </TableCell>
                         <TableCell className="font-mono">
                           {formatCurrency(parseFloat(item.quantity) * parseFloat(item.unitPrice))}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleImageUpload(index, file);
+                              }}
+                              disabled={uploadingImage === index}
+                              className="hidden"
+                              id={`image-upload-${index}`}
+                              data-testid={`input-item-image-${index}`}
+                            />
+                            <label htmlFor={`image-upload-${index}`}>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                disabled={uploadingImage === index}
+                                asChild
+                              >
+                                <span className="cursor-pointer">
+                                  {uploadingImage === index ? (
+                                    "Enviando..."
+                                  ) : item.imageUrl ? (
+                                    <ImageIcon className="h-4 w-4" />
+                                  ) : (
+                                    <Upload className="h-4 w-4" />
+                                  )}
+                                </span>
+                              </Button>
+                            </label>
+                          </div>
                         </TableCell>
                         <TableCell>
                           {quoteItems.length > 1 && (
