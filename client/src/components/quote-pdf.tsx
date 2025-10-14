@@ -1,5 +1,6 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import type { Quote, QuoteItem, Client } from '@shared/schema';
+import logoPath from '@assets/Gemini_Generated_Image_ml7li0ml7li0ml7l-removebg-preview_1760464715280.png';
 
 // Styles para o PDF
 const styles = StyleSheet.create({
@@ -16,8 +17,13 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   logo: {
-    width: 60,
-    height: 60,
+    width: 80,
+    height: 80,
+    marginBottom: 10,
+  },
+  leftHeader: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
   },
   companyInfo: {
     textAlign: 'right',
@@ -139,9 +145,8 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.title}>HelpGlass</Text>
-            <Text style={styles.subtitle}>Soluções em Vidros e Espelhos</Text>
+          <View style={styles.leftHeader}>
+            <Image src={logoPath} style={styles.logo} />
             <Text style={styles.subtitle}>Telefone: (22) 99821-3739</Text>
             <Text style={styles.subtitle}>Email: alpheu25@gmail.com</Text>
           </View>
