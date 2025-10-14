@@ -135,7 +135,7 @@ export default function Clientes() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
-                <Input id="email" name="email" type="email" placeholder="email@exemplo.com" required data-testid="input-cliente-email" />
+                <Input id="email" name="email" type="email" placeholder="email@exemplo.com" data-testid="input-cliente-email" />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Telefone</Label>

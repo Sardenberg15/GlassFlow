@@ -203,7 +203,7 @@ export default function Projetos() {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(numValue);
   };
 
-  const calculateProjectFinancials = (projectId: number) => {
+  const calculateProjectFinancials = (projectId: string) => {
     const projectTransactions = transactions.filter(t => t.projectId === projectId);
     const receitas = projectTransactions
       .filter(t => t.type === 'receita')
