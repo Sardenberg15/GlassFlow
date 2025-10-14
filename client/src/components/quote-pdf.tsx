@@ -142,8 +142,8 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
           <View>
             <Text style={styles.title}>HelpGlass</Text>
             <Text style={styles.subtitle}>Soluções em Vidros e Espelhos</Text>
-            <Text style={styles.subtitle}>Telefone: (11) 98765-4321</Text>
-            <Text style={styles.subtitle}>Email: contato@helpglass.com.br</Text>
+            <Text style={styles.subtitle}>Telefone: (22) 99821-3739</Text>
+            <Text style={styles.subtitle}>Email: alpheu25@gmail.com</Text>
           </View>
           <View style={styles.companyInfo}>
             <Text style={{ fontSize: 16, fontWeight: 'bold', marginBottom: 5 }}>ORÇAMENTO</Text>
