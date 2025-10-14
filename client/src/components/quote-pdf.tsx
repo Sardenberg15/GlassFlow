@@ -319,8 +319,8 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
                 <Text style={styles.colLargura}>{item.width || '-'}</Text>
                 <Text style={styles.colAltura}>{item.height || '-'}</Text>
                 <Text style={styles.colCor}>{item.colorThickness || '-'}</Text>
-                <Text style={styles.colVlrUnit}>R$ {parseFloat(String(item.unitPrice)).toFixed(2)}</Text>
-                <Text style={styles.colVlrTotal}>R$ {parseFloat(String(item.total)).toFixed(2)}</Text>
+                <Text style={styles.colVlrUnit}>R$ {parseFloat(String(item.unitPrice)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+                <Text style={styles.colVlrTotal}>R$ {parseFloat(String(item.total)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
               </View>
             </View>
 
@@ -336,7 +336,7 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
 
         {/* Total */}
         <View style={styles.totalSection}>
-          <Text style={styles.totalText}>VALOR TOTAL: R$ {total.toFixed(2)}</Text>
+          <Text style={styles.totalText}>VALOR TOTAL: R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
         </View>
 
         {/* General Observations */}
