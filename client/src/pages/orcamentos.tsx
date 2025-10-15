@@ -69,6 +69,7 @@ export default function Orcamentos() {
     { description: "", quantity: "1", unitPrice: "0" }
   ]);
   const [uploadingImage, setUploadingImage] = useState<number | null>(null);
+  const [discount, setDiscount] = useState<string>("0");
   const { toast } = useToast();
 
   // Fetch quotes
@@ -156,6 +157,7 @@ export default function Orcamentos() {
       });
       setOpenNew(false);
       setQuoteItems([{ description: "", quantity: "1", unitPrice: "0" }]);
+      setDiscount("0");
     },
     onError: (error: Error) => {
       toast({
@@ -374,7 +376,8 @@ export default function Orcamentos() {
                   step="0.01"
                   min="0"
                   max="100"
-                  defaultValue="0"
+                  value={discount}
+                  onChange={(e) => setDiscount(e.target.value)}
                   placeholder="Ex: 10 (para 10% de desconto)"
                   data-testid="input-discount"
                 />
@@ -565,11 +568,30 @@ export default function Orcamentos() {
                     <Plus className="h-4 w-4 mr-2" />
                     Adicionar Item
                   </Button>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Total do Orçamento</p>
-                    <p className="text-2xl font-bold" data-testid="text-quote-total">
-                      {formatCurrency(calculateTotal())}
-                    </p>
+                  <div className="text-right space-y-1">
+                    {(() => {
+                      const subtotal = calculateTotal();
+                      const discountValue = (subtotal * parseFloat(discount || "0")) / 100;
+                      const total = subtotal - discountValue;
+                      return (
+                        <>
+                          <div className="flex justify-between gap-4 text-sm">
+                            <span className="text-muted-foreground">Subtotal:</span>
+                            <span className="font-mono">{formatCurrency(subtotal)}</span>
+                          </div>
+                          {parseFloat(discount || "0") > 0 && (
+                            <div className="flex justify-between gap-4 text-sm">
+                              <span className="text-muted-foreground">Desconto ({discount}%):</span>
+                              <span className="font-mono text-red-600 dark:text-red-500">-{formatCurrency(discountValue)}</span>
+                            </div>
+                          )}
+                          <div className="flex justify-between gap-4 pt-1 border-t">
+                            <span className="text-sm font-medium">Total:</span>
+                            <span className="text-2xl font-bold font-mono" data-testid="text-quote-total">{formatCurrency(total)}</span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
