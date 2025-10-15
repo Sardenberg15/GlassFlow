@@ -41,7 +41,7 @@ Preferred communication style: Simple, everyday language.
 **Key Pages:**
 - **Dashboard**: Overview metrics, recent projects, revenue trends
 - **Clientes**: Client management with CRUD operations
-- **Projetos**: Project tracking with status workflow and financial details
+- **Projetos**: Project tracking with status workflow, financial details, and payment tracking (shows Valor Cobrado, Recebido, and Falta Receber badge)
 - **Orçamentos**: Quotation generation with PDF export
 - **Financeiro**: Complete financial management with analytics, charts, and transaction management
 
@@ -68,6 +68,8 @@ Preferred communication style: Simple, everyday language.
 **Data Models:**
 - **Clients**: Customer information (name, contact, email [optional], phone, address [optional], CNPJ/CPF [optional])
 - **Projects**: Project details with status workflow (orcamento → aprovado → execucao → finalizado/cancelado)
+  - Project payment tracking: Valor Cobrado (project.value), Valor Recebido (sum of receitas), Falta Receber (Valor Cobrado - Recebido)
+  - Supports common payment patterns: 50% advance, 50% on completion
 - **Transactions**: Financial records (receita/despesa) linked to projects
 - **Quotes**: Quotation details with client reference, number, status, validity date, and observations
 - **Quote Items**: Individual items in quotes with description, quantity, unit price, total, and optional image/drawing
