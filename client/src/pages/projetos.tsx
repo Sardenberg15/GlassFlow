@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { Plus, Search, Filter, Calendar, User, Trash2 } from "lucide-react";
 import { ProjectStatusBadge } from "@/components/project-status-badge";
 import { CartaoObras } from "@/components/cartao-obras";
@@ -455,20 +456,30 @@ export default function Projetos() {
                   <Calendar className="h-4 w-4" />
                   <span>{projeto.date}</span>
                 </div>
-                <div className="pt-2 border-t">
+                <div className="pt-2 border-t space-y-2">
                   {(() => {
                     const financials = calculateProjectFinancials(projeto.id);
-                    if (financials.receitas === 0 && financials.despesas === 0) {
-                      return <p className="text-2xl font-bold font-mono">{formatCurrency(projeto.value)}</p>;
-                    }
+                    const valorCobrado = parseFloat(String(projeto.value));
+                    const faltaReceber = valorCobrado - financials.receitas;
+                    
                     return (
-                      <div className="space-y-1">
-                        <p className="text-2xl font-bold font-mono" data-testid={`text-profit-${projeto.id}`}>
-                          {formatCurrency(financials.profit)}
-                        </p>
-                        <p className="text-sm text-muted-foreground" data-testid={`text-margin-${projeto.id}`}>
-                          Margem: {financials.margin.toFixed(1)}%
-                        </p>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Valor Cobrado:</span>
+                          <span className="text-base font-semibold font-mono">{formatCurrency(valorCobrado)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Recebido:</span>
+                          <span className="text-base font-semibold font-mono text-green-600 dark:text-green-500">{formatCurrency(financials.receitas)}</span>
+                        </div>
+                        {faltaReceber > 0 && (
+                          <div className="flex items-center justify-between pt-1 border-t">
+                            <span className="text-sm font-medium">Falta Receber:</span>
+                            <Badge variant="secondary" className="font-mono font-semibold" data-testid={`badge-falta-receber-${projeto.id}`}>
+                              {formatCurrency(faltaReceber)}
+                            </Badge>
+                          </div>
+                        )}
                       </div>
                     );
                   })()}
