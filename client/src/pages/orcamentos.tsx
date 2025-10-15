@@ -366,6 +366,21 @@ export default function Orcamentos() {
               </div>
 
               <div className="space-y-2">
+                <Label htmlFor="discount">Desconto (%)</Label>
+                <Input 
+                  id="discount" 
+                  name="discount" 
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  max="100"
+                  defaultValue="0"
+                  placeholder="Ex: 10 (para 10% de desconto)"
+                  data-testid="input-discount"
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label>Itens do Orçamento</Label>
                 {quoteItems.map((item, index) => (
                   <Card key={index} className="p-4">
