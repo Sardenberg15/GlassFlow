@@ -44,6 +44,7 @@ export const quotes = pgTable("quotes", {
   validUntil: text("valid_until").notNull(), // data de validade
   local: text("local"), // LOCAL/AMBIENTE
   tipo: text("tipo"), // TIPO
+  discount: decimal("discount", { precision: 5, scale: 2 }).default("0"), // desconto em percentual (ex: 10.50 = 10,5%)
   observations: text("observations"), // observações gerais
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
