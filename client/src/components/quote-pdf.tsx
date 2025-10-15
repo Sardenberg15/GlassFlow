@@ -180,7 +180,10 @@ interface QuotePDFProps {
 }
 
 export function QuotePDF({ quote, client, items }: QuotePDFProps) {
-  const total = items.reduce((sum, item) => sum + parseFloat(String(item.total)), 0);
+  const subtotal = items.reduce((sum, item) => sum + parseFloat(String(item.total)), 0);
+  const discountPercent = parseFloat(String(quote.discount || "0"));
+  const discountValue = (subtotal * discountPercent) / 100;
+  const total = subtotal - discountValue;
 
   return (
     <Document>
@@ -334,9 +337,24 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
           </View>
         ))}
 
-        {/* Total */}
+        {/* Total Section */}
         <View style={styles.totalSection}>
-          <Text style={styles.totalText}>VALOR TOTAL: R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
+            <Text style={{ fontSize: 10 }}>SUBTOTAL:</Text>
+            <Text style={{ fontSize: 10, fontWeight: 'bold' }}>R$ {subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+          </View>
+          {discountPercent > 0 && (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
+              <Text style={{ fontSize: 10 }}>DESCONTO ({discountPercent.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%):</Text>
+              <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#DC2626' }}>-R$ {discountValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+            </View>
+          )}
+          <View style={{ borderTop: '1px solid #ddd', paddingTop: 5, marginTop: 3 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={styles.totalText}>VALOR TOTAL:</Text>
+              <Text style={styles.totalText}>R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+            </View>
+          </View>
         </View>
 
         {/* General Observations */}

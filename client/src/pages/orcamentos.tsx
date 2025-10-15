@@ -813,10 +813,31 @@ export default function Orcamentos() {
                     ))}
                   </TableBody>
                 </Table>
-                <div className="text-right mt-4">
-                  <p className="text-lg font-bold">
-                    Total: {formatCurrency(selectedQuoteItems.reduce((sum, item) => sum + parseFloat(String(item.total)), 0))}
-                  </p>
+                <div className="text-right mt-4 space-y-1">
+                  {(() => {
+                    const subtotal = selectedQuoteItems.reduce((sum, item) => sum + parseFloat(String(item.total)), 0);
+                    const discountPercent = parseFloat(String(selectedQuote.discount || "0"));
+                    const discountValue = (subtotal * discountPercent) / 100;
+                    const total = subtotal - discountValue;
+                    return (
+                      <>
+                        <div className="flex justify-end gap-4 text-sm">
+                          <span className="text-muted-foreground">Subtotal:</span>
+                          <span className="font-mono">{formatCurrency(subtotal)}</span>
+                        </div>
+                        {discountPercent > 0 && (
+                          <div className="flex justify-end gap-4 text-sm">
+                            <span className="text-muted-foreground">Desconto ({discountPercent}%):</span>
+                            <span className="font-mono text-red-600 dark:text-red-500">-{formatCurrency(discountValue)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-end gap-4 pt-1 border-t">
+                          <span className="font-medium">Total:</span>
+                          <span className="text-lg font-bold font-mono">{formatCurrency(total)}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 
