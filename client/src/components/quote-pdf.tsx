@@ -319,8 +319,8 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
               <View style={styles.tableRow}>
                 <Text style={styles.colItem}>{index + 1}</Text>
                 <Text style={styles.colQtde}>{parseFloat(String(item.quantity)).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</Text>
-                <Text style={styles.colLargura}>{item.width || '-'}</Text>
-                <Text style={styles.colAltura}>{item.height || '-'}</Text>
+                <Text style={styles.colLargura}>{item.width ? parseFloat(String(item.width)).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '-'}</Text>
+                <Text style={styles.colAltura}>{item.height ? parseFloat(String(item.height)).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '-'}</Text>
                 <Text style={styles.colCor}>{item.colorThickness || '-'}</Text>
                 <Text style={styles.colVlrUnit}>R$ {parseFloat(String(item.unitPrice)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
                 <Text style={styles.colVlrTotal}>R$ {parseFloat(String(item.total)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>

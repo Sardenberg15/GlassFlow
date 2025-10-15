@@ -51,6 +51,7 @@ import type { Quote, QuoteItem, Client } from "@shared/schema";
 export default function Orcamentos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [openNew, setOpenNew] = useState(false);
+  const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [quoteItems, setQuoteItems] = useState<Array<{ 
     description: string; 
@@ -117,6 +118,7 @@ export default function Orcamentos() {
         validUntil: data.get("validUntil") as string,
         local: data.get("local") as string || "",
         tipo: data.get("tipo") as string || "",
+        discount: data.get("discount") as string || "0",
         observations: data.get("observations") as string || "",
       };
       
@@ -205,10 +207,83 @@ export default function Orcamentos() {
     },
   });
 
+  // Update quote mutation
+  const updateQuoteMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      if (!editingQuote) throw new Error("No quote to edit");
+      
+      const quoteData = {
+        clientId: data.get("clientId") as string,
+        validUntil: data.get("validUntil") as string,
+        local: data.get("local") as string || "",
+        tipo: data.get("tipo") as string || "",
+        discount: data.get("discount") as string || "0",
+        observations: data.get("observations") as string || "",
+      };
+      
+      const response = await apiRequest("PATCH", `/api/quotes/${editingQuote.id}`, quoteData);
+      const quote = await response.json();
+
+      // Delete existing items
+      const existingItems = allItems.filter(item => item.quoteId === editingQuote.id);
+      for (const item of existingItems) {
+        await apiRequest("DELETE", `/api/quote-items/${item.id}`);
+      }
+
+      // Create new items
+      for (const item of quoteItems) {
+        if (item.description) {
+          const total = parseFloat(item.quantity) * parseFloat(item.unitPrice);
+          await apiRequest("POST", "/api/quote-items", {
+            quoteId: quote.id,
+            description: item.description,
+            quantity: item.quantity,
+            width: item.width || null,
+            height: item.height || null,
+            colorThickness: item.colorThickness || null,
+            profileColor: item.profileColor || null,
+            accessoryColor: item.accessoryColor || null,
+            line: item.line || null,
+            deliveryDate: item.deliveryDate || null,
+            itemObservations: item.itemObservations || null,
+            unitPrice: item.unitPrice,
+            total: total.toString(),
+            imageUrl: item.imageUrl || null,
+          });
+        }
+      }
+
+      return quote;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      await queryClient.invalidateQueries({ queryKey: ["/api/quote-items"] });
+      toast({
+        title: "Orçamento atualizado!",
+        description: "O orçamento foi atualizado com sucesso.",
+      });
+      setOpenNew(false);
+      setEditingQuote(null);
+      setQuoteItems([{ description: "", quantity: "1", unitPrice: "0" }]);
+      setDiscount("0");
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao atualizar orçamento",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmitNew = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    createQuoteMutation.mutate(formData);
+    if (editingQuote) {
+      updateQuoteMutation.mutate(formData);
+    } else {
+      createQuoteMutation.mutate(formData);
+    }
   };
 
   const addItem = () => {
