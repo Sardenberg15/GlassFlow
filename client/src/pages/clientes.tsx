@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Search, Mail, Phone, Building, Trash2, MapPin, FileText } from "lucide-react";
+import { Plus, Search, Mail, Phone, Building, Trash2, MapPin, FileText, Pencil } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -32,6 +32,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 export default function Clientes() {
   const [searchTerm, setSearchTerm] = useState("");
   const [open, setOpen] = useState(false);
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
   const { toast } = useToast();
 
   const { data: clientes = [], isLoading } = useQuery<Client[]>({
@@ -85,6 +86,30 @@ export default function Clientes() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async (data: { id: string; name: string; contact: string; email: string; phone: string; address?: string; cnpjCpf?: string }) => {
+      const { id, ...updateData } = data;
+      const res = await apiRequest("PATCH", `/api/clients/${id}`, updateData);
+      return await res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/clients"] });
+      toast({
+        title: "Cliente atualizado!",
+        description: "O cliente foi atualizado com sucesso.",
+      });
+      setOpen(false);
+      setEditingClient(null);
+    },
+    onError: () => {
+      toast({
+        title: "Erro ao atualizar cliente",
+        description: "Ocorreu um erro ao atualizar o cliente.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredClientes = clientes.filter(cliente =>
     cliente.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     cliente.contact.toLowerCase().includes(searchTerm.toLowerCase())
@@ -94,17 +119,29 @@ export default function Clientes() {
     return projects.filter((p: any) => p.clientId === clientId).length;
   };
 
+  const handleEditClient = (client: Client) => {
+    setEditingClient(client);
+    setOpen(true);
+  };
+
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    createMutation.mutate({
+    
+    const data = {
       name: formData.get("name") as string,
       contact: formData.get("contact") as string,
       email: formData.get("email") as string,
       phone: formData.get("phone") as string,
       address: formData.get("address") as string,
       cnpjCpf: formData.get("cnpjCpf") as string,
-    });
+    };
+
+    if (editingClient) {
+      updateMutation.mutate({ id: editingClient.id, ...data });
+    } else {
+      createMutation.mutate(data);
+    }
   };
 
   return (
@@ -114,7 +151,10 @@ export default function Clientes() {
           <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
           <p className="text-muted-foreground">Gerencie sua base de clientes</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(isOpen) => {
+          setOpen(isOpen);
+          if (!isOpen) setEditingClient(null);
+        }}>
           <DialogTrigger asChild>
             <Button data-testid="button-add-cliente">
               <Plus className="h-4 w-4 mr-2" />
@@ -123,36 +163,84 @@ export default function Clientes() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Cadastrar Novo Cliente</DialogTitle>
+              <DialogTitle>{editingClient ? 'Editar Cliente' : 'Cadastrar Novo Cliente'}</DialogTitle>
               <DialogDescription>Preencha os dados do cliente abaixo</DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" key={editingClient?.id || 'new'}>
               <div className="space-y-2">
                 <Label htmlFor="name">Nome/Razão Social</Label>
-                <Input id="name" name="name" placeholder="Nome do cliente" required data-testid="input-cliente-name" />
+                <Input 
+                  id="name" 
+                  name="name" 
+                  placeholder="Nome do cliente" 
+                  required 
+                  data-testid="input-cliente-name"
+                  defaultValue={editingClient?.name || ""}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="contact">Contato Principal</Label>
-                <Input id="contact" name="contact" placeholder="Nome do contato" required data-testid="input-cliente-contact" />
+                <Input 
+                  id="contact" 
+                  name="contact" 
+                  placeholder="Nome do contato" 
+                  required 
+                  data-testid="input-cliente-contact"
+                  defaultValue={editingClient?.contact || ""}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
-                <Input id="email" name="email" type="email" placeholder="email@exemplo.com" data-testid="input-cliente-email" />
+                <Input 
+                  id="email" 
+                  name="email" 
+                  type="email" 
+                  placeholder="email@exemplo.com" 
+                  data-testid="input-cliente-email"
+                  defaultValue={editingClient?.email || ""}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Telefone</Label>
-                <Input id="phone" name="phone" placeholder="(11) 99999-9999" required data-testid="input-cliente-phone" />
+                <Input 
+                  id="phone" 
+                  name="phone" 
+                  placeholder="(11) 99999-9999" 
+                  required 
+                  data-testid="input-cliente-phone"
+                  defaultValue={editingClient?.phone || ""}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="address">Endereço</Label>
-                <Input id="address" name="address" placeholder="Rua, número, complemento, bairro, cidade" data-testid="input-cliente-address" />
+                <Input 
+                  id="address" 
+                  name="address" 
+                  placeholder="Rua, número, complemento, bairro, cidade" 
+                  data-testid="input-cliente-address"
+                  defaultValue={editingClient?.address || ""}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cnpjCpf">CNPJ/CPF</Label>
-                <Input id="cnpjCpf" name="cnpjCpf" placeholder="00.000.000/0000-00 ou 000.000.000-00" data-testid="input-cliente-cnpj-cpf" />
+                <Input 
+                  id="cnpjCpf" 
+                  name="cnpjCpf" 
+                  placeholder="00.000.000/0000-00 ou 000.000.000-00" 
+                  data-testid="input-cliente-cnpj-cpf"
+                  defaultValue={editingClient?.cnpjCpf || ""}
+                />
               </div>
-              <Button type="submit" className="w-full" disabled={createMutation.isPending} data-testid="button-submit-cliente">
-                {createMutation.isPending ? "Cadastrando..." : "Cadastrar Cliente"}
+              <Button 
+                type="submit" 
+                className="w-full" 
+                disabled={editingClient ? updateMutation.isPending : createMutation.isPending} 
+                data-testid="button-submit-cliente"
+              >
+                {editingClient 
+                  ? (updateMutation.isPending ? "Atualizando..." : "Atualizar Cliente")
+                  : (createMutation.isPending ? "Cadastrando..." : "Cadastrar Cliente")
+                }
               </Button>
             </form>
           </DialogContent>
@@ -196,14 +284,22 @@ export default function Clientes() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredClientes.map((cliente) => (
             <Card key={cliente.id} className="hover-elevate" data-testid={`card-cliente-${cliente.id}`}>
-              <CardHeader>
-                <CardTitle className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="bg-primary/10 rounded-full p-2">
-                      <Building className="h-5 w-5 text-primary" />
-                    </div>
-                    <span className="text-base">{cliente.name}</span>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-3">
+                <CardTitle className="flex items-center gap-3 text-base">
+                  <div className="bg-primary/10 rounded-full p-2">
+                    <Building className="h-5 w-5 text-primary" />
                   </div>
+                  <span>{cliente.name}</span>
+                </CardTitle>
+                <div className="flex items-center gap-1">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    onClick={() => handleEditClient(cliente)}
+                    data-testid={`button-edit-cliente-${cliente.id}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <Button 
@@ -234,7 +330,7 @@ export default function Clientes() {
                       </AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>
-                </CardTitle>
+                </div>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="space-y-2 text-sm">
