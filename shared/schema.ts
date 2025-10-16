@@ -52,6 +52,7 @@ export const quotes = pgTable("quotes", {
 export const quoteItems = pgTable("quote_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   quoteId: varchar("quote_id").notNull().references(() => quotes.id, { onDelete: 'cascade' }),
+  ambiente: text("ambiente"), // AMBIENTE (para agrupar itens, ex: "Fachada lateral", "Fachada frontal")
   description: text("description").notNull(),
   quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
   width: decimal("width", { precision: 10, scale: 2 }), // LARGURA
