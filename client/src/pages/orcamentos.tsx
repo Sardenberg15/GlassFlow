@@ -54,7 +54,6 @@ export default function Orcamentos() {
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [quoteItems, setQuoteItems] = useState<Array<{ 
-    ambiente?: string;
     description: string; 
     quantity: string; 
     width?: string;
@@ -138,7 +137,6 @@ export default function Orcamentos() {
           const total = parseFloat(item.quantity) * parseFloat(item.unitPrice);
           await apiRequest("POST", "/api/quote-items", {
             quoteId: quote.id,
-            ambiente: item.ambiente || null,
             description: item.description,
             quantity: item.quantity,
             width: item.width || null,
@@ -250,7 +248,6 @@ export default function Orcamentos() {
           const total = parseFloat(item.quantity) * parseFloat(item.unitPrice);
           await apiRequest("POST", "/api/quote-items", {
             quoteId: quote.id,
-            ambiente: item.ambiente || null,
             description: item.description,
             quantity: item.quantity,
             width: item.width || null,
@@ -381,7 +378,6 @@ export default function Orcamentos() {
     
     if (items.length > 0) {
       setQuoteItems(items.map(item => ({
-        ambiente: item.ambiente || "",
         description: item.description,
         quantity: item.quantity,
         width: item.width || "",
@@ -519,16 +515,6 @@ export default function Orcamentos() {
                     <div className="flex items-start gap-4">
                       <div className="flex-1 space-y-4">
                         <div className="grid grid-cols-3 gap-3">
-                          <div className="col-span-3">
-                            <Label htmlFor={`ambiente-${index}`}>Ambiente</Label>
-                            <Input
-                              id={`ambiente-${index}`}
-                              placeholder="Ex: Fachada lateral, Fachada frontal..."
-                              value={item.ambiente || ""}
-                              onChange={(e) => updateItem(index, 'ambiente', e.target.value)}
-                              data-testid={`input-item-ambiente-${index}`}
-                            />
-                          </div>
                           <div className="col-span-3">
                             <Label htmlFor={`desc-${index}`}>Descrição do Item *</Label>
                             <Input

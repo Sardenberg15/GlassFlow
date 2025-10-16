@@ -185,18 +185,6 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
   const discountValue = (subtotal * discountPercent) / 100;
   const total = subtotal - discountValue;
 
-  // Group items by ambiente
-  const itemsByAmbiente = items.reduce((acc, item) => {
-    const ambiente = item.ambiente || 'Sem Ambiente';
-    if (!acc[ambiente]) {
-      acc[ambiente] = [];
-    }
-    acc[ambiente].push(item);
-    return acc;
-  }, {} as Record<string, QuoteItem[]>);
-
-  const ambientes = Object.keys(itemsByAmbiente);
-
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -220,7 +208,7 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
         <View style={styles.topSection}>
           <View style={styles.localTipo}>
             <Text>
-              <Text style={styles.boldText}>*LOCAL: </Text>
+              <Text style={styles.boldText}>*LOCAL/AMBIENTE: </Text>
               <Text>{quote.local || ''}</Text>
             </Text>
           </View>
