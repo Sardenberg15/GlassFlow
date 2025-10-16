@@ -26,21 +26,21 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   itemContainer: {
-    marginBottom: 10,
+    marginBottom: 15,
   },
   itemHeader: {
     flexDirection: 'row',
-    marginBottom: 8,
-    gap: 8,
+    marginBottom: 10,
+    gap: 10,
   },
   imageSection: {
-    width: 85,
-    padding: 4,
+    width: 100,
+    padding: 5,
     border: '1 solid #000',
   },
   itemImage: {
-    width: 75,
-    height: 75,
+    width: 90,
+    height: 90,
     objectFit: 'contain',
   },
   itemDetails: {
@@ -62,21 +62,21 @@ const styles = StyleSheet.create({
   },
   table: {
     border: '1 solid #000',
-    marginTop: 6,
+    marginTop: 8,
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#2563EB',
     color: 'white',
-    padding: 4,
-    fontSize: 7,
+    padding: 5,
+    fontSize: 8,
     fontWeight: 'bold',
   },
   tableRow: {
     flexDirection: 'row',
     borderTop: '1 solid #000',
-    padding: 4,
-    fontSize: 7,
+    padding: 5,
+    fontSize: 8,
   },
   colItem: { width: '5%', textAlign: 'center' },
   colQtde: { width: '8%', textAlign: 'center' },
@@ -86,20 +86,20 @@ const styles = StyleSheet.create({
   colVlrUnit: { width: '15%', textAlign: 'right' },
   colVlrTotal: { width: '20%', textAlign: 'right' },
   itemObservations: {
-    marginTop: 3,
-    padding: 4,
+    marginTop: 5,
+    padding: 5,
     backgroundColor: '#f9f9f9',
-    fontSize: 7,
+    fontSize: 8,
   },
   obsTitle: {
     fontWeight: 'bold',
-    fontSize: 8,
-    marginBottom: 2,
+    fontSize: 9,
+    marginBottom: 3,
   },
   obsImportant: {
     color: '#dc2626',
-    fontSize: 7,
-    marginTop: 2,
+    fontSize: 8,
+    marginTop: 3,
   },
   totalSection: {
     marginTop: 15,
@@ -225,25 +225,6 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
             </View>
           )}
         </View>
-
-        {/* Endereço da Obra */}
-        {(quote.local || quote.tipo) && (
-          <View style={styles.clientSection}>
-            <Text style={styles.clientTitle}>ENDEREÇO DA OBRA</Text>
-            {quote.local && (
-              <View style={styles.clientRow}>
-                <Text style={styles.clientLabel}>Local/Ambiente:</Text>
-                <Text>{quote.local}</Text>
-              </View>
-            )}
-            {quote.tipo && (
-              <View style={styles.clientRow}>
-                <Text style={styles.clientLabel}>Tipo:</Text>
-                <Text>{quote.tipo}</Text>
-              </View>
-            )}
-          </View>
-        )}
 
         {/* Items */}
         {items.map((item, index) => (

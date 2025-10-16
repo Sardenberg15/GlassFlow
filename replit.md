@@ -12,9 +12,15 @@ Preferred communication style: Simple, everyday language.
 
 **October 16, 2025:**
 - Reorganized quotation form layout: "Endereço da Obra" section (Local/Ambiente and Tipo) now appears immediately after client selection, before validity date
-- Updated PDF template to display "Endereço da Obra" section after client data
 - Added "Endereço da Obra" section to quote details view modal for complete information display
 - Fixed JSX syntax error in Clientes page CardHeader structure
+- Optimized PDF layout to reduce space usage:
+  - Removed "Endereço da Obra" section from PDF to save vertical space
+  - Reduced image sizes (110→90px) and section widths (120→100px)
+  - Adjusted spacing between items (20→15 margin)
+  - Maintained readable font sizes (8pt for tables and text)
+  - Removed wrap={false} to allow flexible page breaks
+  - Result: PDFs fit more items per page with maintained readability
 
 ## System Architecture
 
