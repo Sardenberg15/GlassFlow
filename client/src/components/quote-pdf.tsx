@@ -235,7 +235,7 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
 
         {/* Items */}
         {items.map((item, index) => (
-          <View key={item.id} style={styles.itemContainer}>
+          <View key={item.id} style={styles.itemContainer} wrap={false}>
             {/* Item Header with Image and Details */}
             <View style={styles.itemHeader}>
               {/* Image Section */}
