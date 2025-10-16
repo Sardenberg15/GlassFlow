@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, FileText, Download, Trash2, Eye, Image as ImageIcon, Upload } from "lucide-react";
+import { Plus, Search, FileText, Download, Trash2, Eye, Image as ImageIcon, Upload, Pencil } from "lucide-react";
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { QuotePDF } from "@/components/quote-pdf";
 import {
@@ -358,6 +358,34 @@ export default function Orcamentos() {
     }
   };
 
+  const handleEditQuote = (quote: Quote) => {
+    const items = allItems.filter(item => item.quoteId === quote.id);
+    
+    setEditingQuote(quote);
+    setDiscount(quote.discount || "0");
+    
+    if (items.length > 0) {
+      setQuoteItems(items.map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        width: item.width || "",
+        height: item.height || "",
+        colorThickness: item.colorThickness || "",
+        profileColor: item.profileColor || "",
+        accessoryColor: item.accessoryColor || "",
+        line: item.line || "",
+        deliveryDate: item.deliveryDate || "",
+        itemObservations: item.itemObservations || "",
+        unitPrice: item.unitPrice,
+        imageUrl: item.imageUrl || "",
+      })));
+    } else {
+      setQuoteItems([{ description: "", quantity: "1", unitPrice: "0" }]);
+    }
+    
+    setOpenNew(true);
+  };
+
   const getStatusBadge = (status: string) => {
     const variants: Record<string, "default" | "secondary" | "outline"> = {
       pendente: "secondary",
@@ -380,7 +408,14 @@ export default function Orcamentos() {
           <h1 className="text-3xl font-bold" data-testid="text-page-title">Orçamentos</h1>
           <p className="text-muted-foreground">Gere e gerencie orçamentos padronizados</p>
         </div>
-        <Dialog open={openNew} onOpenChange={setOpenNew}>
+        <Dialog open={openNew} onOpenChange={(open) => {
+          setOpenNew(open);
+          if (!open) {
+            setEditingQuote(null);
+            setQuoteItems([{ description: "", quantity: "1", unitPrice: "0" }]);
+            setDiscount("0");
+          }
+        }}>
           <DialogTrigger asChild>
             <Button data-testid="button-new-quote">
               <Plus className="h-4 w-4 mr-2" />
@@ -389,14 +424,14 @@ export default function Orcamentos() {
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Criar Novo Orçamento</DialogTitle>
+              <DialogTitle>{editingQuote ? 'Editar Orçamento' : 'Criar Novo Orçamento'}</DialogTitle>
               <DialogDescription>Preencha os dados para gerar o orçamento em PDF</DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmitNew} className="space-y-4">
+            <form onSubmit={handleSubmitNew} className="space-y-4" key={editingQuote?.id || 'new'}>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="clientId">Cliente *</Label>
-                  <Select name="clientId" required>
+                  <Select name="clientId" required defaultValue={editingQuote?.clientId}>
                     <SelectTrigger data-testid="select-client">
                       <SelectValue placeholder="Selecione o cliente" />
                     </SelectTrigger>
@@ -416,6 +451,7 @@ export default function Orcamentos() {
                     name="validUntil" 
                     type="date" 
                     data-testid="input-valid-until"
+                    defaultValue={editingQuote?.validUntil}
                     required
                   />
                 </div>
@@ -429,6 +465,7 @@ export default function Orcamentos() {
                     name="local" 
                     placeholder="Ex: Banheiro Social"
                     data-testid="input-local"
+                    defaultValue={editingQuote?.local || ""}
                   />
                 </div>
                 <div className="space-y-2">
@@ -438,6 +475,7 @@ export default function Orcamentos() {
                     name="tipo" 
                     placeholder="Ex: Box de Vidro"
                     data-testid="input-tipo"
+                    defaultValue={editingQuote?.tipo || ""}
                   />
                 </div>
               </div>
@@ -679,6 +717,7 @@ export default function Orcamentos() {
                   placeholder="Ex: Inclui instalação e garantia de 1 ano"
                   rows={3}
                   data-testid="textarea-observations"
+                  defaultValue={editingQuote?.observations || ""}
                 />
               </div>
 
@@ -686,9 +725,12 @@ export default function Orcamentos() {
                 type="submit" 
                 className="w-full" 
                 data-testid="button-submit-quote"
-                disabled={createQuoteMutation.isPending}
+                disabled={editingQuote ? updateQuoteMutation.isPending : createQuoteMutation.isPending}
               >
-                {createQuoteMutation.isPending ? "Gerando..." : "Gerar Orçamento"}
+                {editingQuote 
+                  ? (updateQuoteMutation.isPending ? "Atualizando..." : "Atualizar Orçamento")
+                  : (createQuoteMutation.isPending ? "Gerando..." : "Gerar Orçamento")
+                }
               </Button>
             </form>
           </DialogContent>
@@ -746,6 +788,14 @@ export default function Orcamentos() {
                     </div>
                     <div className="flex items-center gap-1">
                       {getStatusBadge(quote.status)}
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        onClick={() => handleEditQuote(quote)}
+                        data-testid={`button-edit-quote-${quote.id}`}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button 
