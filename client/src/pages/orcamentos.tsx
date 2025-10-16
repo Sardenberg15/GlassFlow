@@ -84,7 +84,7 @@ export default function Orcamentos() {
   });
 
   // Fetch all quote items
-  const { data: allItems = [] } = useQuery<QuoteItem[]>({
+  const { data: allItems = [], isLoading: itemsLoading } = useQuery<QuoteItem[]>({
     queryKey: ["/api/quote-items"],
   });
 
@@ -111,6 +111,12 @@ export default function Orcamentos() {
   // Create quote mutation
   const createQuoteMutation = useMutation({
     mutationFn: async (data: FormData) => {
+      // Verify that we have at least one valid item with description
+      const hasValidItems = quoteItems.some(item => item.description && item.description.trim());
+      if (!hasValidItems) {
+        throw new Error("Adicione pelo menos um item com descrição antes de salvar");
+      }
+      
       const quoteData = {
         clientId: data.get("clientId") as string,
         number: generateQuoteNumber(),
@@ -211,6 +217,12 @@ export default function Orcamentos() {
   const updateQuoteMutation = useMutation({
     mutationFn: async (data: FormData) => {
       if (!editingQuote) throw new Error("No quote to edit");
+      
+      // Verify that we have at least one valid item with description
+      const hasValidItems = quoteItems.some(item => item.description && item.description.trim());
+      if (!hasValidItems) {
+        throw new Error("Adicione pelo menos um item com descrição antes de salvar");
+      }
       
       const quoteData = {
         clientId: data.get("clientId") as string,
@@ -792,6 +804,7 @@ export default function Orcamentos() {
                         variant="ghost" 
                         size="icon"
                         onClick={() => handleEditQuote(quote)}
+                        disabled={itemsLoading}
                         data-testid={`button-edit-quote-${quote.id}`}
                       >
                         <Pencil className="h-4 w-4" />
