@@ -931,6 +931,26 @@ export default function Orcamentos() {
                 </div>
               </div>
 
+              {(selectedQuote.local || selectedQuote.tipo) && (
+                <div className="p-4 border rounded-lg bg-muted/50">
+                  <h3 className="font-semibold mb-3">Endereço da Obra</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {selectedQuote.local && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Local/Ambiente</p>
+                        <p className="font-medium">{selectedQuote.local}</p>
+                      </div>
+                    )}
+                    {selectedQuote.tipo && (
+                      <div>
+                        <p className="text-sm text-muted-foreground">Tipo</p>
+                        <p className="font-medium">{selectedQuote.tipo}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <h3 className="font-semibold mb-2">Itens</h3>
                 <Table>
