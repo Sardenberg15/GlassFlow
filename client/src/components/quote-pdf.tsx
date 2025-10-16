@@ -26,21 +26,21 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   itemContainer: {
-    marginBottom: 20,
+    marginBottom: 10,
   },
   itemHeader: {
     flexDirection: 'row',
-    marginBottom: 10,
-    gap: 10,
+    marginBottom: 8,
+    gap: 8,
   },
   imageSection: {
-    width: 120,
-    padding: 5,
+    width: 85,
+    padding: 4,
     border: '1 solid #000',
   },
   itemImage: {
-    width: 110,
-    height: 110,
+    width: 75,
+    height: 75,
     objectFit: 'contain',
   },
   itemDetails: {
@@ -62,21 +62,21 @@ const styles = StyleSheet.create({
   },
   table: {
     border: '1 solid #000',
-    marginTop: 10,
+    marginTop: 6,
   },
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#2563EB',
     color: 'white',
-    padding: 5,
-    fontSize: 8,
+    padding: 4,
+    fontSize: 7,
     fontWeight: 'bold',
   },
   tableRow: {
     flexDirection: 'row',
     borderTop: '1 solid #000',
-    padding: 5,
-    fontSize: 8,
+    padding: 4,
+    fontSize: 7,
   },
   colItem: { width: '5%', textAlign: 'center' },
   colQtde: { width: '8%', textAlign: 'center' },
@@ -86,20 +86,20 @@ const styles = StyleSheet.create({
   colVlrUnit: { width: '15%', textAlign: 'right' },
   colVlrTotal: { width: '20%', textAlign: 'right' },
   itemObservations: {
-    marginTop: 5,
-    padding: 5,
+    marginTop: 3,
+    padding: 4,
     backgroundColor: '#f9f9f9',
-    fontSize: 8,
+    fontSize: 7,
   },
   obsTitle: {
     fontWeight: 'bold',
-    fontSize: 9,
-    marginBottom: 3,
+    fontSize: 8,
+    marginBottom: 2,
   },
   obsImportant: {
     color: '#dc2626',
-    fontSize: 8,
-    marginTop: 3,
+    fontSize: 7,
+    marginTop: 2,
   },
   totalSection: {
     marginTop: 15,
@@ -247,7 +247,7 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
 
         {/* Items */}
         {items.map((item, index) => (
-          <View key={item.id} style={styles.itemContainer} wrap={false}>
+          <View key={item.id} style={styles.itemContainer}>
             {/* Item Header with Image and Details */}
             <View style={styles.itemHeader}>
               {/* Image Section */}
