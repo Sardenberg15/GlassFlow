@@ -8,6 +8,14 @@ HelpGlass is a comprehensive ERP/CRM system designed for managing glass and mirr
 
 Preferred communication style: Simple, everyday language.
 
+## Recent Changes
+
+**October 16, 2025:**
+- Reorganized quotation form layout: "Endereço da Obra" section (Local/Ambiente and Tipo) now appears immediately after client selection, before validity date
+- Updated PDF template to display "Endereço da Obra" section after client data
+- Added "Endereço da Obra" section to quote details view modal for complete information display
+- Fixed JSX syntax error in Clientes page CardHeader structure
+
 ## System Architecture
 
 ### Frontend Architecture
@@ -98,9 +106,17 @@ Preferred communication style: Simple, everyday language.
 
 **Quotation System (Orçamentos Page):**
 - Complete quote generation with professional PDF export
-- Quote management with CRUD operations and delete confirmation dialogs
+- Quote management with CRUD operations (create, edit, delete) and delete confirmation dialogs
 - Professional layout based on industry-standard quotation format
-- Quote header fields: LOCAL/AMBIENTE, TIPO (optional)
+- Form organization:
+  1. Cliente selection (required)
+  2. **Endereço da Obra** section (visually grouped with border and background):
+     - Local/Ambiente (optional)
+     - Tipo (optional)
+  3. Válido até (required)
+  4. Desconto % (optional)
+  5. Items list with comprehensive fields
+  6. General observations
 - Quote items with comprehensive card-based form:
   - Descrição do Item (required)
   - Quantidade (required, supports decimals)
@@ -120,8 +136,10 @@ Preferred communication style: Simple, everyday language.
   - Accepts image files only (image/*)
 - Professional PDF template:
   - Company branding with contact info (phone: 22 99821-3739, email: alpheu25@gmail.com)
-  - LOCAL/AMBIENTE and TIPO header display
   - Complete client data section with all fields
+  - **Endereço da Obra** section (appears after client data, before items):
+    - Local/Ambiente
+    - Tipo
   - Per-item layout:
     - Image positioned on left (if available)
     - Item description and details on right (cor perfil, cor acessório, linha, data entrega)
