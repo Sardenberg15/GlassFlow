@@ -324,7 +324,7 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
           {discountPercent > 0 && (
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
               <Text style={{ fontSize: 10 }}>DESCONTO ({discountPercent.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%):</Text>
-              <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#10B981' }}>-R$ {discountValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+              <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#DC2626' }}>-R$ {discountValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
             </View>
           )}
           <View style={{ borderTop: '1px solid #ddd', paddingTop: 5, marginTop: 3 }}>
