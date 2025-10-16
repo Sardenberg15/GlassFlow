@@ -25,19 +25,6 @@ const styles = StyleSheet.create({
   headerRight: {
     textAlign: 'right',
   },
-  topSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-    paddingVertical: 5,
-    borderBottom: '1 solid #000',
-  },
-  localTipo: {
-    flex: 1,
-  },
-  boldText: {
-    fontWeight: 'bold',
-  },
   itemContainer: {
     marginBottom: 20,
   },
@@ -204,22 +191,6 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
           </View>
         </View>
 
-        {/* Local/Ambiente e Tipo */}
-        <View style={styles.topSection}>
-          <View style={styles.localTipo}>
-            <Text>
-              <Text style={styles.boldText}>*LOCAL/AMBIENTE: </Text>
-              <Text>{quote.local || ''}</Text>
-            </Text>
-          </View>
-          <View style={{ textAlign: 'right' }}>
-            <Text>
-              <Text style={styles.boldText}>TIPO: </Text>
-              <Text>{quote.tipo || ''}</Text>
-            </Text>
-          </View>
-        </View>
-
         {/* Cliente */}
         <View style={styles.clientSection}>
           <Text style={styles.clientTitle}>DADOS DO CLIENTE</Text>
@@ -254,6 +225,25 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
             </View>
           )}
         </View>
+
+        {/* Endereço da Obra */}
+        {(quote.local || quote.tipo) && (
+          <View style={styles.clientSection}>
+            <Text style={styles.clientTitle}>ENDEREÇO DA OBRA</Text>
+            {quote.local && (
+              <View style={styles.clientRow}>
+                <Text style={styles.clientLabel}>Local/Ambiente:</Text>
+                <Text>{quote.local}</Text>
+              </View>
+            )}
+            {quote.tipo && (
+              <View style={styles.clientRow}>
+                <Text style={styles.clientLabel}>Tipo:</Text>
+                <Text>{quote.tipo}</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Items */}
         {items.map((item, index) => (

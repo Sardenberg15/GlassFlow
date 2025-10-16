@@ -440,56 +440,58 @@ export default function Orcamentos() {
               <DialogDescription>Preencha os dados para gerar o orçamento em PDF</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmitNew} className="space-y-4" key={editingQuote?.id || 'new'}>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="clientId">Cliente *</Label>
-                  <Select name="clientId" required defaultValue={editingQuote?.clientId}>
-                    <SelectTrigger data-testid="select-client">
-                      <SelectValue placeholder="Selecione o cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map(client => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="validUntil">Válido até *</Label>
-                  <Input 
-                    id="validUntil" 
-                    name="validUntil" 
-                    type="date" 
-                    data-testid="input-valid-until"
-                    defaultValue={editingQuote?.validUntil}
-                    required
-                  />
+              <div className="space-y-2">
+                <Label htmlFor="clientId">Cliente *</Label>
+                <Select name="clientId" required defaultValue={editingQuote?.clientId}>
+                  <SelectTrigger data-testid="select-client">
+                    <SelectValue placeholder="Selecione o cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map(client => (
+                      <SelectItem key={client.id} value={client.id}>
+                        {client.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-4 p-4 border rounded-lg bg-muted/50">
+                <h4 className="text-sm font-medium">Endereço da Obra</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="local">Local/Ambiente</Label>
+                    <Input 
+                      id="local" 
+                      name="local" 
+                      placeholder="Ex: Banheiro Social"
+                      data-testid="input-local"
+                      defaultValue={editingQuote?.local || ""}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tipo">Tipo</Label>
+                    <Input 
+                      id="tipo" 
+                      name="tipo" 
+                      placeholder="Ex: Box de Vidro"
+                      data-testid="input-tipo"
+                      defaultValue={editingQuote?.tipo || ""}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="local">Local/Ambiente</Label>
-                  <Input 
-                    id="local" 
-                    name="local" 
-                    placeholder="Ex: Banheiro Social"
-                    data-testid="input-local"
-                    defaultValue={editingQuote?.local || ""}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tipo">Tipo</Label>
-                  <Input 
-                    id="tipo" 
-                    name="tipo" 
-                    placeholder="Ex: Box de Vidro"
-                    data-testid="input-tipo"
-                    defaultValue={editingQuote?.tipo || ""}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="validUntil">Válido até *</Label>
+                <Input 
+                  id="validUntil" 
+                  name="validUntil" 
+                  type="date" 
+                  data-testid="input-valid-until"
+                  defaultValue={editingQuote?.validUntil}
+                  required
+                />
               </div>
 
               <div className="space-y-2">
