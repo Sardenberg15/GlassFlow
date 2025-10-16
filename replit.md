@@ -20,6 +20,8 @@ Preferred communication style: Simple, everyday language.
   - Adjusted spacing between items (20→15 margin)
   - Maintained readable font sizes (8pt for tables and text)
   - Removed wrap={false} to allow flexible page breaks
+  - Added page numbering ("Página X de Y") in footer
+  - Changed discount value color from red to green (#10B981)
   - Result: PDFs fit more items per page with maintained readability
 
 ## System Architecture

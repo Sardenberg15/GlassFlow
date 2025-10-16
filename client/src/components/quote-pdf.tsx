@@ -138,6 +138,13 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTop: '1 solid #e5e7eb',
   },
+  pageNumber: {
+    position: 'absolute',
+    bottom: 10,
+    right: 30,
+    fontSize: 9,
+    color: '#666',
+  },
   clientSection: {
     marginBottom: 15,
     padding: 8,
@@ -317,7 +324,7 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
           {discountPercent > 0 && (
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
               <Text style={{ fontSize: 10 }}>DESCONTO ({discountPercent.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%):</Text>
-              <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#DC2626' }}>-R$ {discountValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+              <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#10B981' }}>-R$ {discountValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
             </View>
           )}
           <View style={{ borderTop: '1px solid #ddd', paddingTop: 5, marginTop: 3 }}>
@@ -341,6 +348,13 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
           <Text style={{ marginTop: 3 }}>A VALIDADE DO ORÇAMENTO: 05 DIAS ÚTEIS OU REPASSE DE NOVOS PREÇOS DE NOSSOS FORNECEDORES.</Text>
           <Text style={{ marginTop: 5, fontWeight: 'bold' }}>HelpGlass - Soluções em Vidros e Espelhos - (22) 99821-3739</Text>
         </View>
+        
+        {/* Page Number */}
+        <Text
+          style={styles.pageNumber}
+          render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`}
+          fixed
+        />
       </Page>
     </Document>
   );
