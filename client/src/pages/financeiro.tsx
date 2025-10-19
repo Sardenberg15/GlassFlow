@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DollarSign, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, Plus, Filter, Trash2, Calendar } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, Plus, Filter, Trash2, Calendar, Pencil } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, Line, LineChart, Pie, PieChart, Cell } from "recharts";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -32,7 +32,10 @@ export default function Financeiro() {
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("6months");
   const [typeFilter, setTypeFilter] = useState<"all" | "receita" | "despesa">("all");
   
-  // Form state for transaction creation
+  // Edit state
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  
+  // Form state for transaction creation/editing
   const [formType, setFormType] = useState<string>("");
   const [formProjectId, setFormProjectId] = useState<string>("");
   const [formDescription, setFormDescription] = useState<string>("");
@@ -49,6 +52,27 @@ export default function Financeiro() {
 
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
+  });
+
+  const updateTransactionMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => 
+      apiRequest("PATCH", `/api/transactions/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      toast({
+        title: "Transação atualizada",
+        description: "A transação foi atualizada com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar a transação.",
+        variant: "destructive",
+      });
+    },
   });
 
   const deleteTransactionMutation = useMutation({
@@ -167,7 +191,26 @@ export default function Financeiro() {
   const lucro = stats?.lucro || 0;
   const margemLucro = stats?.margem || 0;
 
-  const handleCreateTransaction = async (e: React.FormEvent<HTMLFormElement>) => {
+  const resetForm = () => {
+    setFormType("");
+    setFormProjectId("");
+    setFormDescription("");
+    setFormValue("");
+    setFormDate("");
+    setEditingTransaction(null);
+  };
+
+  const handleEditTransaction = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setFormType(transaction.type);
+    setFormProjectId(transaction.projectId);
+    setFormDescription(transaction.description);
+    setFormValue(transaction.value);
+    setFormDate(transaction.date.split('T')[0]);
+    setIsDialogOpen(true);
+  };
+
+  const handleSubmitTransaction = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
     if (!formType || !formProjectId || !formDescription || !formValue || !formDate) {
@@ -180,35 +223,44 @@ export default function Financeiro() {
     }
     
     try {
-      await apiRequest("POST", "/api/transactions", {
-        projectId: formProjectId,
-        type: formType,
-        description: formDescription,
-        value: formValue,
-        date: formDate,
-      });
+      if (editingTransaction) {
+        // Update existing transaction
+        await updateTransactionMutation.mutateAsync({
+          id: editingTransaction.id,
+          data: {
+            projectId: formProjectId,
+            type: formType,
+            description: formDescription,
+            value: formValue,
+            date: formDate,
+          }
+        });
+      } else {
+        // Create new transaction
+        await apiRequest("POST", "/api/transactions", {
+          projectId: formProjectId,
+          type: formType,
+          description: formDescription,
+          value: formValue,
+          date: formDate,
+        });
 
-      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+        
+        toast({
+          title: "Transação criada",
+          description: "A transação foi adicionada com sucesso.",
+        });
+      }
       
       setIsDialogOpen(false);
-      
-      // Reset form
-      setFormType("");
-      setFormProjectId("");
-      setFormDescription("");
-      setFormValue("");
-      setFormDate("");
-      
-      toast({
-        title: "Transação criada",
-        description: "A transação foi adicionada com sucesso.",
-      });
+      resetForm();
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Não foi possível criar a transação.",
+        description: editingTransaction ? "Não foi possível atualizar a transação." : "Não foi possível criar a transação.",
         variant: "destructive",
       });
     }
@@ -221,7 +273,10 @@ export default function Financeiro() {
           <h1 className="text-3xl font-bold tracking-tight">Financeiro</h1>
           <p className="text-muted-foreground">Visão geral das finanças da empresa</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) resetForm();
+        }}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-transaction">
               <Plus className="h-4 w-4 mr-2" />
@@ -230,9 +285,9 @@ export default function Financeiro() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Nova Transação</DialogTitle>
+              <DialogTitle>{editingTransaction ? "Editar Transação" : "Nova Transação"}</DialogTitle>
             </DialogHeader>
-            <form onSubmit={handleCreateTransaction} className="space-y-4">
+            <form onSubmit={handleSubmitTransaction} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="type">Tipo</Label>
                 <Select value={formType} onValueChange={setFormType} required>
@@ -296,7 +351,7 @@ export default function Financeiro() {
                 />
               </div>
               <Button type="submit" className="w-full" data-testid="button-submit-transaction">
-                Criar Transação
+                {editingTransaction ? "Atualizar Transação" : "Criar Transação"}
               </Button>
             </form>
           </DialogContent>
@@ -572,14 +627,24 @@ export default function Financeiro() {
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => deleteTransactionMutation.mutate(transaction.id)}
-                            data-testid={`button-delete-transaction-${transaction.id}`}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditTransaction(transaction)}
+                              data-testid={`button-edit-transaction-${transaction.id}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => deleteTransactionMutation.mutate(transaction.id)}
+                              data-testid={`button-delete-transaction-${transaction.id}`}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
