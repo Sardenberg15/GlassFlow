@@ -10,6 +10,15 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+**October 19, 2025:**
+- Added edit functionality for financial transactions (receitas and despesas):
+  - New updateTransaction method in IStorage interface and DatabaseStorage implementation
+  - PATCH /api/transactions/:id route for updating transactions
+  - Edit button in transactions table with Pencil icon
+  - Dialog now supports both create and edit modes
+  - Form auto-populates when editing
+  - Proper state management and cache invalidation
+
 **October 16, 2025:**
 - Reorganized quotation form layout: "Endereço da Obra" section (Local/Ambiente and Tipo) now appears immediately after client selection, before validity date
 - Added "Endereço da Obra" section to quote details view modal for complete information display
