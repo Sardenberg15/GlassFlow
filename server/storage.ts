@@ -41,6 +41,7 @@ export interface IStorage {
   getTransactions(): Promise<Transaction[]>;
   getTransactionsByProject(projectId: string): Promise<Transaction[]>;
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
+  updateTransaction(id: string, transaction: Partial<InsertTransaction>): Promise<Transaction | undefined>;
   deleteTransaction(id: string): Promise<void>;
   
   // Quotes
@@ -136,6 +137,11 @@ export class DatabaseStorage implements IStorage {
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
     const [transaction] = await db.insert(transactions).values(insertTransaction).returning();
     return transaction;
+  }
+
+  async updateTransaction(id: string, updateData: Partial<InsertTransaction>): Promise<Transaction | undefined> {
+    const [transaction] = await db.update(transactions).set(updateData).where(eq(transactions.id, id)).returning();
+    return transaction || undefined;
   }
 
   async deleteTransaction(id: string): Promise<void> {
