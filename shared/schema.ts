@@ -79,6 +79,18 @@ export const projectFiles = pgTable("project_files", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const bills = pgTable("bills", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: text("type").notNull(), // pagar, receber
+  description: text("description").notNull(),
+  value: decimal("value", { precision: 10, scale: 2 }).notNull(),
+  dueDate: text("due_date").notNull(), // data de vencimento
+  status: text("status").notNull().default("pendente"), // pendente, pago, atrasado
+  projectId: varchar("project_id").references(() => projects.id, { onDelete: 'set null' }), // opcional
+  date: text("date").notNull(), // data de emissão
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Relations
 export const clientsRelations = relations(clients, ({ many }) => ({
   projects: many(projects),
@@ -92,6 +104,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
   }),
   transactions: many(transactions),
   files: many(projectFiles),
+  bills: many(bills),
 }));
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
@@ -119,6 +132,13 @@ export const quoteItemsRelations = relations(quoteItems, ({ one }) => ({
 export const projectFilesRelations = relations(projectFiles, ({ one }) => ({
   project: one(projects, {
     fields: [projectFiles.projectId],
+    references: [projects.id],
+  }),
+}));
+
+export const billsRelations = relations(bills, ({ one }) => ({
+  project: one(projects, {
+    fields: [bills.projectId],
     references: [projects.id],
   }),
 }));
@@ -154,6 +174,11 @@ export const insertProjectFileSchema = createInsertSchema(projectFiles).omit({
   createdAt: true,
 });
 
+export const insertBillSchema = createInsertSchema(bills).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type InsertClient = z.infer<typeof insertClientSchema>;
 export type Client = typeof clients.$inferSelect;
@@ -172,3 +197,6 @@ export type QuoteItem = typeof quoteItems.$inferSelect;
 
 export type InsertProjectFile = z.infer<typeof insertProjectFileSchema>;
 export type ProjectFile = typeof projectFiles.$inferSelect;
+
+export type InsertBill = z.infer<typeof insertBillSchema>;
+export type Bill = typeof bills.$inferSelect;
