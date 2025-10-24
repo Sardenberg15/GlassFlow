@@ -5,6 +5,7 @@ import {
   quotes,
   quoteItems,
   projectFiles,
+  bills,
   type Client, 
   type InsertClient,
   type Project,
@@ -17,6 +18,8 @@ import {
   type InsertQuoteItem,
   type ProjectFile,
   type InsertProjectFile,
+  type Bill,
+  type InsertBill,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
@@ -62,6 +65,14 @@ export interface IStorage {
   getProjectFiles(projectId: string): Promise<ProjectFile[]>;
   createProjectFile(file: InsertProjectFile): Promise<ProjectFile>;
   deleteProjectFile(id: string): Promise<void>;
+  
+  // Bills
+  getBills(): Promise<Bill[]>;
+  getBill(id: string): Promise<Bill | undefined>;
+  getBillsByProject(projectId: string): Promise<Bill[]>;
+  createBill(bill: InsertBill): Promise<Bill>;
+  updateBill(id: string, bill: Partial<InsertBill>): Promise<Bill | undefined>;
+  deleteBill(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -210,6 +221,38 @@ export class DatabaseStorage implements IStorage {
 
   async deleteProjectFile(id: string): Promise<void> {
     await db.delete(projectFiles).where(eq(projectFiles.id, id));
+  }
+
+  // Bills
+  async getBills(): Promise<Bill[]> {
+    return await db.select().from(bills).orderBy(desc(bills.createdAt));
+  }
+
+  async getBill(id: string): Promise<Bill | undefined> {
+    const [bill] = await db.select().from(bills).where(eq(bills.id, id));
+    return bill || undefined;
+  }
+
+  async getBillsByProject(projectId: string): Promise<Bill[]> {
+    return await db.select().from(bills).where(eq(bills.projectId, projectId));
+  }
+
+  async createBill(insertBill: InsertBill): Promise<Bill> {
+    const [bill] = await db.insert(bills).values(insertBill).returning();
+    return bill;
+  }
+
+  async updateBill(id: string, billData: Partial<InsertBill>): Promise<Bill | undefined> {
+    const [bill] = await db
+      .update(bills)
+      .set(billData)
+      .where(eq(bills.id, id))
+      .returning();
+    return bill || undefined;
+  }
+
+  async deleteBill(id: string): Promise<void> {
+    await db.delete(bills).where(eq(bills.id, id));
   }
 }
 
