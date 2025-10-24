@@ -13,7 +13,9 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useMemo } from "react";
-import type { Transaction, Project } from "@shared/schema";
+import type { Transaction, Project, Bill } from "@shared/schema";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 
 interface DashboardStats {
   activeProjects: number;
@@ -34,6 +36,7 @@ export default function Financeiro() {
   
   // Edit state
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editingBill, setEditingBill] = useState<Bill | null>(null);
   
   // Form state for transaction creation/editing
   const [formType, setFormType] = useState<string>("");
@@ -41,6 +44,18 @@ export default function Financeiro() {
   const [formDescription, setFormDescription] = useState<string>("");
   const [formValue, setFormValue] = useState<string>("");
   const [formDate, setFormDate] = useState<string>("");
+  
+  // Bill dialog state
+  const [isBillDialogOpen, setIsBillDialogOpen] = useState(false);
+  
+  // Form state for bill creation/editing
+  const [billFormType, setBillFormType] = useState<string>("");
+  const [billFormProjectId, setBillFormProjectId] = useState<string>("");
+  const [billFormDescription, setBillFormDescription] = useState<string>("");
+  const [billFormValue, setBillFormValue] = useState<string>("");
+  const [billFormDate, setBillFormDate] = useState<string>("");
+  const [billFormDueDate, setBillFormDueDate] = useState<string>("");
+  const [billFormStatus, setBillFormStatus] = useState<string>("pendente");
 
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
@@ -52,6 +67,10 @@ export default function Financeiro() {
 
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
+  });
+
+  const { data: bills = [], isLoading: billsLoading } = useQuery<Bill[]>({
+    queryKey: ["/api/bills"],
   });
 
   const updateTransactionMutation = useMutation({
@@ -89,6 +108,43 @@ export default function Financeiro() {
       toast({
         title: "Erro",
         description: "Não foi possível excluir a transação.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const updateBillMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => 
+      apiRequest("PATCH", `/api/bills/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+      toast({
+        title: "Conta atualizada",
+        description: "A conta foi atualizada com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar a conta.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteBillMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/bills/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+      toast({
+        title: "Conta excluída",
+        description: "A conta foi removida com sucesso.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Erro",
+        description: "Não foi possível excluir a conta.",
         variant: "destructive",
       });
     },
@@ -210,6 +266,29 @@ export default function Financeiro() {
     setIsDialogOpen(true);
   };
 
+  const resetBillForm = () => {
+    setBillFormType("");
+    setBillFormProjectId("");
+    setBillFormDescription("");
+    setBillFormValue("");
+    setBillFormDate("");
+    setBillFormDueDate("");
+    setBillFormStatus("pendente");
+    setEditingBill(null);
+  };
+
+  const handleEditBill = (bill: Bill) => {
+    setEditingBill(bill);
+    setBillFormType(bill.type);
+    setBillFormProjectId(bill.projectId || "");
+    setBillFormDescription(bill.description);
+    setBillFormValue(bill.value);
+    setBillFormDate(bill.date.split('T')[0]);
+    setBillFormDueDate(bill.dueDate.split('T')[0]);
+    setBillFormStatus(bill.status);
+    setIsBillDialogOpen(true);
+  };
+
   const handleSubmitTransaction = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     
@@ -263,26 +342,6 @@ export default function Financeiro() {
         description: editingTransaction ? "Não foi possível atualizar a transação." : "Não foi possível criar a transação.",
         variant: "destructive",
       });
-    }
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Financeiro</h1>
-          <p className="text-muted-foreground">Visão geral das finanças da empresa</p>
-        </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) resetForm();
-        }}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-transaction">
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Transação
-            </Button>
-          </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{editingTransaction ? "Editar Transação" : "Nova Transação"}</DialogTitle>
