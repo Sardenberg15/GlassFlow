@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertClientSchema, insertProjectSchema, insertTransactionSchema, insertQuoteSchema, insertQuoteItemSchema, insertProjectFileSchema } from "@shared/schema";
+import { insertClientSchema, insertProjectSchema, insertTransactionSchema, insertQuoteSchema, insertQuoteItemSchema, insertProjectFileSchema, insertBillSchema } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -377,6 +377,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete project file" });
+    }
+  });
+
+  // Bills Routes (Contas a Pagar e Receber)
+  app.get("/api/bills", async (req, res) => {
+    try {
+      const bills = await storage.getBills();
+      res.json(bills);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch bills" });
+    }
+  });
+
+  app.get("/api/bills/:id", async (req, res) => {
+    try {
+      const bill = await storage.getBill(req.params.id);
+      if (!bill) {
+        return res.status(404).json({ error: "Bill not found" });
+      }
+      res.json(bill);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch bill" });
+    }
+  });
+
+  app.get("/api/projects/:projectId/bills", async (req, res) => {
+    try {
+      const bills = await storage.getBillsByProject(req.params.projectId);
+      res.json(bills);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch project bills" });
+    }
+  });
+
+  app.post("/api/bills", async (req, res) => {
+    try {
+      const validatedData = insertBillSchema.parse(req.body);
+      const bill = await storage.createBill(validatedData);
+      res.status(201).json(bill);
+    } catch (error) {
+      console.error("Bill creation error:", error);
+      res.status(400).json({ error: "Invalid bill data" });
+    }
+  });
+
+  app.patch("/api/bills/:id", async (req, res) => {
+    try {
+      const bill = await storage.updateBill(req.params.id, req.body);
+      if (!bill) {
+        return res.status(404).json({ error: "Bill not found" });
+      }
+      res.json(bill);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update bill" });
+    }
+  });
+
+  app.delete("/api/bills/:id", async (req, res) => {
+    try {
+      await storage.deleteBill(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete bill" });
     }
   });
 
