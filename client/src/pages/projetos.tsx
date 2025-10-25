@@ -78,11 +78,20 @@ export default function Projetos() {
 
   // Merge projects with their transactions and client data
   const projectsWithData: ProjectWithTransactions[] = projects.map(project => {
-    const projectTransactions = transactions.filter(t => t.projectId === project.id);
+    const projectTransactions = transactions.filter(t => t.projectId === project.id) as Transaction[];
     const client = clients.find(c => c.id === project.clientId);
     return {
       ...project,
-      client: client || { id: project.clientId, name: "Cliente não encontrado", contact: "", email: "", phone: "", createdAt: new Date() },
+      client: client || { 
+        id: project.clientId, 
+        name: "Cliente não encontrado", 
+        contact: "", 
+        email: null, 
+        phone: "", 
+        address: null,
+        cnpjCpf: null,
+        createdAt: new Date() 
+      },
       transactions: projectTransactions,
     };
   });
@@ -707,6 +716,38 @@ export default function Projetos() {
                       </div>
                     )}
                   </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 pt-3 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      data-testid={`button-add-receita-${projeto.id}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedProject(projeto);
+                        setOpenReceita(true);
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1.5" />
+                      Receita
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      data-testid={`button-add-despesa-${projeto.id}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedProject(projeto);
+                        setOpenDespesa(true);
+                      }}
+                    >
+                      <Plus className="h-3.5 w-3.5 mr-1.5" />
+                      Despesa
+                    </Button>
+                  </div>
                 </CardContent>
               </Card>
             );
@@ -746,7 +787,14 @@ export default function Projetos() {
                   </SelectContent>
                 </Select>
               </div>
-              <StatusWorkflow currentStatus={selectedProject?.status as ProjectStatus} />
+              {selectedProject && selectedProject.status !== "cancelado" && (
+                <StatusWorkflow currentStatus={selectedProject.status as "orcamento" | "aprovado" | "execucao" | "finalizado"} />
+              )}
+              {selectedProject?.status === "cancelado" && (
+                <div className="text-center py-4 text-muted-foreground">
+                  Projeto cancelado
+                </div>
+              )}
             </div>
 
             {/* Cartão de Obras */}
@@ -754,7 +802,7 @@ export default function Projetos() {
               <CartaoObras
                 projectId={selectedProject.id}
                 projectName={selectedProject.name}
-                transactions={selectedProject.transactions}
+                transactions={selectedProject.transactions as Transaction[]}
               />
             )}
           </div>
