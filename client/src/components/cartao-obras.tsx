@@ -37,8 +37,10 @@ export function CartaoObras({ projectId, projectName, transactions }: CartaoObra
   const totalDespesas = despesas.reduce((sum, t) => sum + parseFloat(String(t.value)), 0);
   const saldo = totalReceitas - totalDespesas;
 
-  const formatCurrency = (value: number) => 
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  const formatCurrency = (value: number | string) => {
+    const numValue = typeof value === 'string' ? parseFloat(value) : value;
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(numValue);
+  };
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return bytes + ' B';
@@ -115,16 +117,18 @@ export function CartaoObras({ projectId, projectName, transactions }: CartaoObra
   });
 
   const handleUploadComplete = (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
-    if (result.successful.length > 0) {
+    if (result.successful && result.successful.length > 0) {
       const file = result.successful[0];
-      createFileMutation.mutate({
-        projectId,
-        fileName: file.name,
-        fileType: file.type || "application/octet-stream",
-        fileSize: file.size,
-        category: selectedCategory,
-        objectPath: file.uploadURL,
-      });
+      if (file.name && file.uploadURL) {
+        createFileMutation.mutate({
+          projectId,
+          fileName: file.name,
+          fileType: file.type || "application/octet-stream",
+          fileSize: file.size || 0,
+          category: selectedCategory,
+          objectPath: file.uploadURL,
+        });
+      }
     }
   };
 
