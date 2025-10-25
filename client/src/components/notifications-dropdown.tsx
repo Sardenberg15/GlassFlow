@@ -26,35 +26,33 @@ export function NotificationsDropdown() {
     queryKey: ["/api/projects"],
   });
 
-  const notifications = useMemo(() => {
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0]; // YYYY-MM-DD format
-    
-    const threeDaysLater = new Date(now);
-    threeDaysLater.setDate(now.getDate() + 3);
-    const threeDaysLaterStr = threeDaysLater.toISOString().split('T')[0];
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0]; // YYYY-MM-DD format
+  
+  const threeDaysLater = new Date(now);
+  threeDaysLater.setDate(now.getDate() + 3);
+  const threeDaysLaterStr = threeDaysLater.toISOString().split('T')[0];
 
-    const billsAPagar = bills.filter(b => b.type === "pagar" && b.status !== "pago");
+  const billsAPagar = bills.filter(b => b.type === "pagar" && b.status !== "pago");
 
-    const overdueBills = billsAPagar.filter(bill => {
-      return bill.dueDate < todayStr;
-    });
+  const overdueBills = billsAPagar.filter(bill => {
+    return bill.dueDate < todayStr;
+  });
 
-    const todayBills = billsAPagar.filter(bill => {
-      return bill.dueDate === todayStr;
-    });
+  const todayBills = billsAPagar.filter(bill => {
+    return bill.dueDate === todayStr;
+  });
 
-    const upcomingBills = billsAPagar.filter(bill => {
-      return bill.dueDate > todayStr && bill.dueDate <= threeDaysLaterStr;
-    });
+  const upcomingBills = billsAPagar.filter(bill => {
+    return bill.dueDate > todayStr && bill.dueDate <= threeDaysLaterStr;
+  });
 
-    return {
-      overdue: overdueBills,
-      today: todayBills,
-      upcoming: upcomingBills,
-      total: overdueBills.length + todayBills.length + upcomingBills.length,
-    };
-  }, [bills]);
+  const notifications = {
+    overdue: overdueBills,
+    today: todayBills,
+    upcoming: upcomingBills,
+    total: overdueBills.length + todayBills.length + upcomingBills.length,
+  };
 
   const formatCurrency = (value: string | number) => {
     const numValue = typeof value === 'string' ? parseFloat(value) : value;
@@ -62,8 +60,8 @@ export function NotificationsDropdown() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}`;
   };
 
   const getProjectName = (projectId: string | null) => {

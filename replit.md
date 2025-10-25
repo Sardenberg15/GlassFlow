@@ -30,6 +30,21 @@ Preferred communication style: Simple, everyday language.
   - Create/edit bill dialog with comprehensive form (type, description, value, dates, project, status)
   - Loading states, empty states, and proper error handling throughout
 
+- **Notification System for Bill Payment Reminders**:
+  - Bell icon with badge counter in header showing total pending notifications
+  - NotificationsDropdown component integrated in App.tsx header
+  - Smart categorization of bills "a pagar" (accounts payable only):
+    * **Vencidas** (Overdue): Bills with dueDate < today - shown with red AlertCircle icon
+    * **Vence Hoje** (Due Today): Bills due exactly today - shown with orange Clock icon
+    * **Próximas** (Upcoming): Bills due within next 3 days - shown with DollarSign icon
+  - String-based date comparison to avoid timezone issues
+  - Click on notification redirects to /financeiro page
+  - Empty state "Tudo em dia!" when no pending payments
+  - Each notification shows: description, formatted currency value, project name, and due date
+  - ScrollArea for handling many notifications
+  - Badge shows destructive variant for visual urgency
+  - "Ver todas as contas" button at bottom for quick access
+
 ## System Architecture
 
 ### Frontend Architecture
