@@ -406,11 +406,34 @@ export default function Financeiro() {
 
   const handleMarkAsPaid = async (bill: Bill) => {
     try {
+      // Se for conta a receber vinculada a projeto, criar receita automaticamente
+      if (bill.type === "receber" && bill.projectId) {
+        await apiRequest("POST", "/api/transactions", {
+          projectId: bill.projectId,
+          type: "receita",
+          description: bill.description,
+          value: bill.value,
+          date: new Date().toISOString().split('T')[0],
+        });
+        
+        queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      }
+      
+      // Marcar conta como paga
       await updateBillMutation.mutateAsync({
         id: bill.id,
         data: {
           status: "pago",
         }
+      });
+      
+      toast({
+        title: bill.type === "receber" ? "Receita lançada!" : "Conta paga!",
+        description: bill.type === "receber" && bill.projectId 
+          ? "A conta foi marcada como paga e a receita foi lançada no projeto."
+          : "A conta foi marcada como paga.",
       });
     } catch (error) {
       toast({
