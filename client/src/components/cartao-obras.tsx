@@ -10,15 +10,7 @@ import { ArrowDownCircle, ArrowUpCircle, Upload, FileText, Trash2, Download } fr
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useToast } from "@/hooks/use-toast";
 import type { UploadResult } from "@uppy/core";
-import type { ProjectFile } from "@shared/schema";
-
-interface Transaction {
-  id: string;
-  type: "receita" | "despesa";
-  description: string;
-  value: number;
-  date: string;
-}
+import type { ProjectFile, Transaction } from "@shared/schema";
 
 interface CartaoObrasProps {
   projectId: string;
@@ -41,8 +33,8 @@ export function CartaoObras({ projectId, projectName, transactions }: CartaoObra
   const receitas = transactions.filter(t => t.type === "receita");
   const despesas = transactions.filter(t => t.type === "despesa");
   
-  const totalReceitas = receitas.reduce((sum, t) => sum + t.value, 0);
-  const totalDespesas = despesas.reduce((sum, t) => sum + t.value, 0);
+  const totalReceitas = receitas.reduce((sum, t) => sum + parseFloat(String(t.value)), 0);
+  const totalDespesas = despesas.reduce((sum, t) => sum + parseFloat(String(t.value)), 0);
   const saldo = totalReceitas - totalDespesas;
 
   const formatCurrency = (value: number) => 

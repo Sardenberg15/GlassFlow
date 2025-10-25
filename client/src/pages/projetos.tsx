@@ -552,11 +552,7 @@ export default function Projetos() {
             return (
               <Card 
                 key={projeto.id} 
-                className={`hover-elevate cursor-pointer transition-all ${
-                  isOverdue ? 'border-l-4 border-l-destructive' : 
-                  hasPaymentPending && !isPaid ? 'border-l-4 border-l-orange-500' : 
-                  isPaid ? 'border-l-4 border-l-green-500' : ''
-                }`}
+                className="hover-elevate cursor-pointer transition-all"
                 onClick={() => setSelectedProject(projeto)}
                 data-testid={`card-projeto-${projeto.id}`}
               >
@@ -575,6 +571,12 @@ export default function Projetos() {
                           <Badge className="text-xs bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-400">
                             <CheckCircle2 className="h-3 w-3 mr-1" />
                             Pago
+                          </Badge>
+                        )}
+                        {hasPaymentPending && !isPaid && !isOverdue && (
+                          <Badge className="text-xs bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-400">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Pendente
                           </Badge>
                         )}
                       </div>
@@ -753,7 +755,7 @@ export default function Projetos() {
               <CartaoObras
                 projectId={selectedProject.id}
                 projectName={selectedProject.name}
-                transactions={selectedProject.transactions as Transaction[]}
+                transactions={selectedProject.transactions}
               />
             )}
           </div>
