@@ -168,6 +168,7 @@ export default function Projetos() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] }); // Atualiza contas a receber automáticas
       toast({
         title: "Projeto criado!",
         description: "O orçamento foi gerado com sucesso.",
@@ -190,6 +191,7 @@ export default function Projetos() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] }); // Atualiza contas a receber automáticas
       toast({
         title: "Projeto excluído",
         description: "O projeto foi removido com sucesso.",
@@ -211,6 +213,7 @@ export default function Projetos() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] }); // Atualiza contas a receber automáticas
       toast({
         title: "Status atualizado",
         description: "O status do projeto foi alterado.",

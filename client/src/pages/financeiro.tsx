@@ -80,6 +80,7 @@ export default function Financeiro() {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] }); // Atualiza contas a receber automáticas
       toast({
         title: "Transação atualizada",
         description: "A transação foi atualizada com sucesso.",
@@ -99,6 +100,7 @@ export default function Financeiro() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] }); // Atualiza contas a receber automáticas
       toast({
         title: "Transação excluída",
         description: "A transação foi removida com sucesso.",
@@ -327,6 +329,7 @@ export default function Financeiro() {
         queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
         queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
         queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/bills"] }); // Atualiza contas a receber automáticas
         
         toast({
           title: "Transação criada",
