@@ -3,6 +3,54 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertClientSchema, insertProjectSchema, insertTransactionSchema, insertQuoteSchema, insertQuoteItemSchema, insertProjectFileSchema, insertBillSchema } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import type { Project } from "@shared/schema";
+
+// Helper function to sync bills with project payment status
+async function syncProjectBills(project: Project) {
+  try {
+    // Calculate pending amount based on project value and received transactions
+    const projectValue = parseFloat(String(project.value));
+    const transactions = await storage.getTransactionsByProject(project.id);
+    const receivedAmount = transactions
+      .filter(t => t.type === 'receita')
+      .reduce((sum, t) => sum + parseFloat(String(t.value)), 0);
+    const pendingAmount = projectValue - receivedAmount;
+    
+    // Get existing bill for this project (should be only one "receber" bill per project)
+    const existingBills = await storage.getBillsByProject(project.id);
+    const existingBill = existingBills.find(bill => bill.type === "receber");
+    
+    if (pendingAmount > 0) {
+      // Project has pending payment - create or update bill
+      const billData = {
+        type: "receber" as const,
+        description: `Saldo a receber - ${project.name}`,
+        value: pendingAmount.toFixed(2),
+        dueDate: project.date, // Use project date as due date
+        status: "pendente" as const,
+        projectId: project.id,
+        date: new Date().toISOString().split('T')[0],
+      };
+      
+      if (existingBill) {
+        // Update existing bill
+        await storage.updateBill(existingBill.id, billData);
+      } else {
+        // Create new bill
+        await storage.createBill(billData);
+      }
+    } else if (existingBill) {
+      // Project fully paid or overpaid - mark bill as paid
+      await storage.updateBill(existingBill.id, {
+        status: "pago" as const,
+        value: projectValue.toFixed(2),
+      });
+    }
+  } catch (error) {
+    console.error("Error syncing project bills:", error);
+    // Don't throw - let project creation/update succeed even if bill sync fails
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Clients Routes
@@ -93,6 +141,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertProjectSchema.parse(req.body);
       const project = await storage.createProject(validatedData);
+      
+      // Sync bills automatically for projects with pending payment
+      await syncProjectBills(project);
+      
       res.status(201).json(project);
     } catch (error) {
       console.error("Project creation error:", error);
@@ -106,6 +158,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
+      
+      // Sync bills automatically after project update
+      await syncProjectBills(project);
+      
       res.json(project);
     } catch (error) {
       res.status(400).json({ error: "Failed to update project" });
@@ -144,6 +200,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertTransactionSchema.parse(req.body);
       const transaction = await storage.createTransaction(validatedData);
+      
+      // Sync bills when transaction changes project payment
+      const project = await storage.getProject(transaction.projectId);
+      if (project) {
+        await syncProjectBills(project);
+      }
+      
       res.status(201).json(transaction);
     } catch (error) {
       console.error("Transaction creation error:", error);
@@ -157,6 +220,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!transaction) {
         return res.status(404).json({ error: "Transaction not found" });
       }
+      
+      // Sync bills when transaction changes
+      const project = await storage.getProject(transaction.projectId);
+      if (project) {
+        await syncProjectBills(project);
+      }
+      
       res.json(transaction);
     } catch (error) {
       res.status(400).json({ error: "Failed to update transaction" });
@@ -165,7 +235,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/transactions/:id", async (req, res) => {
     try {
+      // Get transaction before deleting to sync project bills
+      const transactionToDelete = await storage.getTransaction(req.params.id);
+      
       await storage.deleteTransaction(req.params.id);
+      
+      // Sync bills after transaction deletion
+      if (transactionToDelete) {
+        const project = await storage.getProject(transactionToDelete.projectId);
+        if (project) {
+          await syncProjectBills(project);
+        }
+      }
+      
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete transaction" });
