@@ -8,6 +8,16 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Changes
 
+**October 25, 2025 - Latest:**
+- **Fixed critical design violations and type safety issues**:
+  - Removed border-l-4 from rounded Card components (violated design guidelines)
+  - Replaced with colored status Badges: green (Pago), orange (Pendente), red (Atrasado)
+  - CartaoObras now uses Transaction type from @shared/schema (no more local type definitions)
+  - Safe value conversion with parseFloat(String(t.value)) for compatibility
+  - Enhanced formatCurrency to accept both number and string types
+  - Added null/undefined guards for Uppy upload results
+  - Zero LSP errors remaining - all type warnings resolved
+  
 **October 25, 2025:**
 - **Redesigned Projects page with enhanced visual UI/UX**:
   - Added 4 metric cards showing: Total a Receber, Pagamento Pendente, Atrasados, Total em Projetos
