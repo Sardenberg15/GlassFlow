@@ -9,6 +9,18 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 **October 25, 2025 - Latest:**
+- **Automatic Bill Synchronization with Projects**:
+  - Implemented syncProjectBills() helper function for automatic account receivable management
+  - Creates/updates "contas a receber" automatically based on project payment status
+  - Triggers on project creation, updates, and transaction changes (create, update, delete)
+  - Calculates pending amount: project value minus sum of received transactions (receitas)
+  - Auto-creates bill when project has pending payment (status: "pendente")
+  - Auto-updates bill value when payments are added or modified
+  - Auto-marks bill as "pago" when project is fully paid
+  - One receivable bill per project (prevents duplicates)
+  - Added getTransaction() method to IStorage interface and DatabaseStorage
+  - E2E tested: project creation, partial payments, full settlement
+  
 - **Fixed critical design violations and type safety issues**:
   - Removed border-l-4 from rounded Card components (violated design guidelines)
   - Replaced with colored status Badges: green (Pago), orange (Pendente), red (Atrasado)
