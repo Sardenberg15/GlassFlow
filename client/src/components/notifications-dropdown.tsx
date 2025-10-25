@@ -27,30 +27,25 @@ export function NotificationsDropdown() {
   });
 
   const notifications = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0]; // YYYY-MM-DD format
     
-    const threeDaysFromNow = new Date(today);
-    threeDaysFromNow.setDate(today.getDate() + 3);
+    const threeDaysLater = new Date(now);
+    threeDaysLater.setDate(now.getDate() + 3);
+    const threeDaysLaterStr = threeDaysLater.toISOString().split('T')[0];
 
     const billsAPagar = bills.filter(b => b.type === "pagar" && b.status !== "pago");
 
     const overdueBills = billsAPagar.filter(bill => {
-      const dueDate = new Date(bill.dueDate);
-      dueDate.setHours(0, 0, 0, 0);
-      return dueDate < today;
-    });
-
-    const upcomingBills = billsAPagar.filter(bill => {
-      const dueDate = new Date(bill.dueDate);
-      dueDate.setHours(0, 0, 0, 0);
-      return dueDate >= today && dueDate <= threeDaysFromNow;
+      return bill.dueDate < todayStr;
     });
 
     const todayBills = billsAPagar.filter(bill => {
-      const dueDate = new Date(bill.dueDate);
-      dueDate.setHours(0, 0, 0, 0);
-      return dueDate.getTime() === today.getTime();
+      return bill.dueDate === todayStr;
+    });
+
+    const upcomingBills = billsAPagar.filter(bill => {
+      return bill.dueDate > todayStr && bill.dueDate <= threeDaysLaterStr;
     });
 
     return {
