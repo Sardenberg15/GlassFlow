@@ -9,6 +9,16 @@ Preferred communication style: Simple, everyday language.
 ## Recent Changes
 
 **October 25, 2025:**
+- **Redesigned Projects page with enhanced visual UI/UX**:
+  - Added 4 metric cards showing: Total a Receber, Pagamento Pendente, Atrasados, Total em Projetos
+  - Visual filter badges for both project status and payment status (pago, pendente, atrasado)
+  - Payment progress bars on each project card showing % received
+  - Color-coded cards with borders: orange for pending payments, red for overdue
+  - Automatic overdue detection for finished projects with pending payments
+  - Large "Falta Receber" badges with visual alerts for projects with outstanding amounts
+  - CheckCircle indicator for fully paid projects
+  - Improved card layout with better spacing and visual hierarchy
+  
 - Implemented complete accounts payable and receivable system (Contas a Pagar/Receber):
   - New bills table in database with fields: type (pagar/receber), description, value, dueDate, status, projectId, date
   - Full CRUD operations in backend (getBills, createBill, updateBill, deleteBill)
