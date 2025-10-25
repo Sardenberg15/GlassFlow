@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DollarSign, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, Plus, Filter, Trash2, Calendar, Pencil } from "lucide-react";
+import { DollarSign, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, Plus, Filter, Trash2, Calendar, Pencil, CheckCircle2, FileText } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, Line, LineChart, Pie, PieChart, Cell } from "recharts";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -342,6 +342,99 @@ export default function Financeiro() {
         description: editingTransaction ? "Não foi possível atualizar a transação." : "Não foi possível criar a transação.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleSubmitBill = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    
+    if (!billFormType || !billFormDescription || !billFormValue || !billFormDate || !billFormDueDate) {
+      toast({
+        title: "Erro",
+        description: "Por favor, preencha todos os campos obrigatórios.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    try {
+      if (editingBill) {
+        await updateBillMutation.mutateAsync({
+          id: editingBill.id,
+          data: {
+            projectId: billFormProjectId || null,
+            type: billFormType,
+            description: billFormDescription,
+            value: billFormValue,
+            date: billFormDate,
+            dueDate: billFormDueDate,
+            status: billFormStatus,
+          }
+        });
+      } else {
+        await apiRequest("POST", "/api/bills", {
+          projectId: billFormProjectId || null,
+          type: billFormType,
+          description: billFormDescription,
+          value: billFormValue,
+          date: billFormDate,
+          dueDate: billFormDueDate,
+          status: billFormStatus,
+        });
+
+        queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+        
+        toast({
+          title: "Conta criada",
+          description: "A conta foi adicionada com sucesso.",
+        });
+      }
+      
+      setIsBillDialogOpen(false);
+      resetBillForm();
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: editingBill ? "Não foi possível atualizar a conta." : "Não foi possível criar a conta.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleMarkAsPaid = async (bill: Bill) => {
+    try {
+      await updateBillMutation.mutateAsync({
+        id: bill.id,
+        data: {
+          status: "pago",
+        }
+      });
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Não foi possível marcar como pago.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Financeiro</h1>
+          <p className="text-muted-foreground">Visão geral das finanças da empresa</p>
+        </div>
+        <Dialog open={isDialogOpen} onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) resetForm();
+        }}>
+          <DialogTrigger asChild>
+            <Button data-testid="button-create-transaction">
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Transação
+            </Button>
+          </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>{editingTransaction ? "Editar Transação" : "Nova Transação"}</DialogTitle>
@@ -612,12 +705,132 @@ export default function Financeiro() {
         </CardContent>
       </Card>
 
-      {/* Tabela de Transações */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Todas as Transações ({filteredTransactions.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Tabs de Transações e Contas */}
+      <Tabs defaultValue="transactions" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="transactions" data-testid="tab-transactions">
+              Transações
+            </TabsTrigger>
+            <TabsTrigger value="bills" data-testid="tab-bills">
+              Contas a Pagar/Receber
+            </TabsTrigger>
+          </TabsList>
+          <Dialog open={isBillDialogOpen} onOpenChange={(open) => {
+            setIsBillDialogOpen(open);
+            if (!open) resetBillForm();
+          }}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-create-bill">
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Conta
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{editingBill ? "Editar Conta" : "Nova Conta"}</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleSubmitBill} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="bill-type">Tipo</Label>
+                  <Select value={billFormType} onValueChange={setBillFormType} required>
+                    <SelectTrigger id="bill-type" data-testid="select-bill-type">
+                      <SelectValue placeholder="Selecione o tipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="receber">A Receber</SelectItem>
+                      <SelectItem value="pagar">A Pagar</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bill-description">Descrição</Label>
+                  <Input
+                    id="bill-description"
+                    value={billFormDescription}
+                    onChange={(e) => setBillFormDescription(e.target.value)}
+                    placeholder="Descrição da conta"
+                    data-testid="input-bill-description"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bill-value">Valor</Label>
+                  <Input
+                    id="bill-value"
+                    value={billFormValue}
+                    onChange={(e) => setBillFormValue(e.target.value)}
+                    type="number"
+                    step="0.01"
+                    placeholder="0.00"
+                    data-testid="input-bill-value"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bill-date">Data de Emissão</Label>
+                  <Input
+                    id="bill-date"
+                    value={billFormDate}
+                    onChange={(e) => setBillFormDate(e.target.value)}
+                    type="date"
+                    data-testid="input-bill-date"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bill-due-date">Data de Vencimento</Label>
+                  <Input
+                    id="bill-due-date"
+                    value={billFormDueDate}
+                    onChange={(e) => setBillFormDueDate(e.target.value)}
+                    type="date"
+                    data-testid="input-bill-due-date"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bill-project">Projeto (Opcional)</Label>
+                  <Select value={billFormProjectId} onValueChange={setBillFormProjectId}>
+                    <SelectTrigger id="bill-project" data-testid="select-bill-project">
+                      <SelectValue placeholder="Sem Projeto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {projects.map(project => (
+                        <SelectItem key={project.id} value={project.id}>
+                          {project.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bill-status">Status</Label>
+                  <Select value={billFormStatus} onValueChange={setBillFormStatus} required>
+                    <SelectTrigger id="bill-status" data-testid="select-bill-status">
+                      <SelectValue placeholder="Selecione o status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pendente">Pendente</SelectItem>
+                      <SelectItem value="pago">Pago</SelectItem>
+                      <SelectItem value="atrasado">Atrasado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button type="submit" className="w-full" data-testid="button-submit-bill">
+                  {editingBill ? "Atualizar Conta" : "Criar Conta"}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        <TabsContent value="transactions">
+          <Card>
+            <CardHeader>
+              <CardTitle>Todas as Transações ({filteredTransactions.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
           {transactionsLoading ? (
             <div className="space-y-4">
               {[...Array(5)].map((_, i) => (
@@ -712,8 +925,142 @@ export default function Financeiro() {
               </Table>
             </div>
           )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="bills">
+          <Card>
+            <CardHeader>
+              <CardTitle>Contas a Pagar e Receber ({bills.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {billsLoading ? (
+                <div className="space-y-4">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center justify-between p-4 rounded-lg border" data-testid={`skeleton-bill-${i}`}>
+                      <div className="flex items-center gap-4">
+                        <Skeleton className="h-10 w-10 rounded-full" />
+                        <div className="space-y-2">
+                          <Skeleton className="h-4 w-48" />
+                          <Skeleton className="h-3 w-32" />
+                        </div>
+                      </div>
+                      <Skeleton className="h-6 w-24" />
+                    </div>
+                  ))}
+                </div>
+              ) : bills.length === 0 ? (
+                <div className="text-center py-12" data-testid="empty-bills">
+                  <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Nenhuma conta encontrada</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Crie contas a pagar ou receber para gerenciar suas finanças
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Vencimento</TableHead>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead>Projeto</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bills.map((bill) => {
+                        const project = projects.find(p => p.id === bill.projectId);
+                        const isOverdue = bill.status === "pendente" && new Date(bill.dueDate) < new Date();
+                        
+                        return (
+                          <TableRow key={bill.id} data-testid={`bill-row-${bill.id}`}>
+                            <TableCell className="font-medium" data-testid={`bill-due-date-${bill.id}`}>
+                              {new Date(bill.dueDate).toLocaleDateString('pt-BR')}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {bill.type === "receber" ? (
+                                  <ArrowUpCircle className="h-4 w-4 text-chart-2" />
+                                ) : (
+                                  <ArrowDownCircle className="h-4 w-4 text-chart-4" />
+                                )}
+                                <span className={bill.type === "receber" ? "text-chart-2" : "text-chart-4"}>
+                                  {bill.type === "receber" ? "A Receber" : "A Pagar"}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell data-testid={`bill-description-${bill.id}`}>
+                              {bill.description}
+                            </TableCell>
+                            <TableCell data-testid={`bill-project-${bill.id}`}>
+                              {project?.name || "N/A"}
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant={
+                                  bill.status === "pago" ? "default" : 
+                                  isOverdue ? "destructive" : 
+                                  "secondary"
+                                }
+                                data-testid={`bill-status-${bill.id}`}
+                              >
+                                {bill.status === "pago" ? "Pago" : 
+                                 isOverdue ? "Atrasado" : 
+                                 "Pendente"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-mono font-bold" data-testid={`bill-value-${bill.id}`}>
+                              <span className={bill.type === "receber" ? "text-chart-2" : "text-chart-4"}>
+                                {bill.type === "receber" ? "+" : "-"}{formatCurrency(parseFloat(bill.value))}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                {bill.status !== "pago" && (
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleMarkAsPaid(bill)}
+                                    data-testid={`button-mark-paid-${bill.id}`}
+                                    title="Marcar como pago"
+                                  >
+                                    <CheckCircle2 className="h-4 w-4 text-chart-2" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEditBill(bill)}
+                                  data-testid={`button-edit-bill-${bill.id}`}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => deleteBillMutation.mutate(bill.id)}
+                                  data-testid={`button-delete-bill-${bill.id}`}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
