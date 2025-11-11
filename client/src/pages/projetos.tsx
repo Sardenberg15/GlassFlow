@@ -8,10 +8,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Search, Calendar, User, Trash2, DollarSign, AlertCircle, CheckCircle2, Clock, TrendingUp, AlertTriangle, FileText } from "lucide-react";
+import { Plus, Search, Calendar, User, Trash2, DollarSign, AlertCircle, CheckCircle2, Clock, TrendingUp, TrendingDown, AlertTriangle, FileText, MoreHorizontal } from "lucide-react";
 import { ProjectStatusBadge } from "@/components/project-status-badge";
 import { CartaoObras } from "@/components/cartao-obras";
+import { GestaoObraPanel } from "@/components/gestao-obra-panel";
 import { StatusWorkflow } from "@/components/status-workflow";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import {
   Select,
   SelectContent,
@@ -56,6 +61,7 @@ export default function Projetos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("todos");
+  const [sortBy, setSortBy] = useState<"recent" | "valor_desc" | "valor_asc" | "recebido_desc">("recent");
   const [openNew, setOpenNew] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectWithTransactions | null>(null);
   const [openReceita, setOpenReceita] = useState(false);
@@ -150,6 +156,21 @@ export default function Projetos() {
     const matchesPayment = paymentFilter === "todos" || projeto.paymentStatus === paymentFilter;
     return matchesSearch && matchesStatus && matchesPayment;
   });
+
+  const orderedProjetos = useMemo(() => {
+    const arr = [...filteredProjetos];
+    if (sortBy === "valor_desc") {
+      return arr.sort((a, b) => Number(b.valorCobrado) - Number(a.valorCobrado));
+    }
+    if (sortBy === "valor_asc") {
+      return arr.sort((a, b) => Number(a.valorCobrado) - Number(b.valorCobrado));
+    }
+    if (sortBy === "recebido_desc") {
+      return arr.sort((a, b) => Number(b.percentualRecebido) - Number(a.percentualRecebido));
+    }
+    // recent: best effort by using index order (API returns newest first usually)
+    return arr;
+  }, [filteredProjetos, sortBy]);
 
   // Create project mutation
   const createProjectMutation = useMutation({
@@ -285,13 +306,13 @@ export default function Projetos() {
   const isLoading = projectsLoading || transactionsLoading;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Projetos</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Projetos</h1>
           <p className="text-muted-foreground mt-1">
-            {filteredProjetos.length} {filteredProjetos.length === 1 ? "projeto encontrado" : "projetos encontrados"}
+            Acompanhe e gerencie todos os seus projetos em um só lugar.
           </p>
         </div>
         <Dialog open={openNew} onOpenChange={setOpenNew}>
@@ -383,491 +404,344 @@ export default function Projetos() {
         </Dialog>
       </div>
 
-      {/* Metrics Cards */}
-      {!isLoading && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Card className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total a Receber</CardTitle>
-              <div className="h-8 w-8 rounded-full bg-orange-100 dark:bg-orange-950 flex items-center justify-center">
-                <DollarSign className="h-4 w-4 text-orange-600 dark:text-orange-500" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600 dark:text-orange-500">
-                {formatCurrency(metrics.totalFaltaReceber)}
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Pendente de recebimento
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pagamento Pendente</CardTitle>
-              <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-950 flex items-center justify-center">
-                <Clock className="h-4 w-4 text-blue-600 dark:text-blue-500" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{metrics.projetosPendentes}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {metrics.projetosPendentes === 1 ? "projeto" : "projetos"} com valores pendentes
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Atrasados</CardTitle>
-              <div className="h-8 w-8 rounded-full bg-red-100 dark:bg-red-950 flex items-center justify-center">
-                <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-500" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-destructive">{metrics.projetosAtrasados}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                Finalizados sem pagamento total
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="hover-elevate">
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total em Projetos</CardTitle>
-              <div className="h-8 w-8 rounded-full bg-green-100 dark:bg-green-950 flex items-center justify-center">
-                <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-500" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{formatCurrency(metrics.totalValor)}</div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {metrics.totalProjetos} {metrics.totalProjetos === 1 ? "projeto" : "projetos"}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Search and Filters */}
-      <div className="flex flex-col lg:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por projeto ou cliente..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-            data-testid="input-search-projeto"
-          />
-        </div>
-        
-        <div className="flex flex-wrap gap-2">
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[160px]" data-testid="select-filter-status">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos Status</SelectItem>
-              <SelectItem value="orcamento">Orçamento</SelectItem>
-              <SelectItem value="aprovado">Aprovado</SelectItem>
-              <SelectItem value="execucao">Em Execução</SelectItem>
-              <SelectItem value="finalizado">Finalizado</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={paymentFilter} onValueChange={(value) => setPaymentFilter(value as PaymentFilter)}>
-            <SelectTrigger className="w-[160px]" data-testid="select-filter-payment">
-              <SelectValue placeholder="Pagamento" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos Pagamentos</SelectItem>
-              <SelectItem value="pago">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-3 w-3" />
-                  <span>Pago</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="pendente">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-3 w-3" />
-                  <span>Pendente</span>
-                </div>
-              </SelectItem>
-              <SelectItem value="atrasado">
-                <div className="flex items-center gap-2">
-                  <AlertCircle className="h-3 w-3" />
-                  <span>Atrasado</span>
-                </div>
-              </SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+      {/* KPIs */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <Card className="hover:border-primary/80 transition-colors">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Valor Total</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">{formatCurrency(metrics.totalValor)}</div>}
+            <p className="text-xs text-muted-foreground">Soma de todos os projetos</p>
+          </CardContent>
+        </Card>
+        <Card className="hover:border-primary/80 transition-colors">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total a Receber</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-3/4" /> : <div className="text-2xl font-bold">{formatCurrency(metrics.totalFaltaReceber)}</div>}
+            <p className="text-xs text-muted-foreground">Valor pendente de todos os projetos</p>
+          </CardContent>
+        </Card>
+        <Card className="hover:border-primary/80 transition-colors">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Projetos</CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{metrics.totalProjetos}</div>}
+            <p className="text-xs text-muted-foreground">Número total de orçamentos e obras</p>
+          </CardContent>
+        </Card>
+        <Card className="hover:border-yellow-500/80 transition-colors border-yellow-500/30">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pag. Pendente</CardTitle>
+            <Clock className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{metrics.projetosPendentes}</div>}
+            <p className="text-xs text-muted-foreground">Projetos aguardando pagamento</p>
+          </CardContent>
+        </Card>
+        <Card className="hover:border-red-500/80 transition-colors border-red-500/30">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Pag. Atrasado</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            {isLoading ? <Skeleton className="h-8 w-1/4" /> : <div className="text-2xl font-bold">{metrics.projetosAtrasados}</div>}
+            <p className="text-xs text-muted-foreground">Projetos com pagamento vencido</p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Loading State */}
-      {isLoading && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i}>
-              <CardHeader className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <Skeleton className="h-6 w-3/4" />
-                  <Skeleton className="h-5 w-20" />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Skeleton className="h-4 w-2/3" />
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-8 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!isLoading && filteredProjetos.length === 0 && (
-        <Card className="p-12">
-          <div className="text-center space-y-3">
-            <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-              <Search className="h-6 w-6 text-muted-foreground" />
+      {/* Filters and Project List */}
+      <div className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="flex flex-1 items-center gap-2">
+            <div className="relative w-full max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por projeto ou cliente..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
             </div>
-            <h3 className="font-semibold text-lg">Nenhum projeto encontrado</h3>
-            <p className="text-muted-foreground">
-              {searchTerm || statusFilter !== "todos" || paymentFilter !== "todos"
-                ? "Tente ajustar os filtros de busca" 
-                : "Comece criando um novo projeto"}
-            </p>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Status do Projeto" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos Status</SelectItem>
+                <SelectItem value="orcamento">Orçamento</SelectItem>
+                <SelectItem value="aprovado">Aprovado</SelectItem>
+                <SelectItem value="execucao">Em Execução</SelectItem>
+                <SelectItem value="finalizado">Finalizado</SelectItem>
+                <SelectItem value="cancelado">Cancelado</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={paymentFilter} onValueChange={(v) => setPaymentFilter(v as PaymentFilter)}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Status Pagamento" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos Pagamentos</SelectItem>
+                <SelectItem value="pago">Pago</SelectItem>
+                <SelectItem value="pendente">Pendente</SelectItem>
+                <SelectItem value="atrasado">Atrasado</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </Card>
-      )}
-
-      {/* Projects Grid */}
-      {!isLoading && filteredProjetos.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredProjetos.map((projeto) => {
-            const hasPaymentPending = projeto.faltaReceber > 0;
-            const isOverdue = projeto.paymentStatus === "atrasado";
-            const isPaid = projeto.paymentStatus === "pago";
-            
-            return (
-              <Card 
-                key={projeto.id} 
-                className="hover-elevate cursor-pointer transition-all"
-                onClick={() => setSelectedProject(projeto)}
-                data-testid={`card-projeto-${projeto.id}`}
-              >
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <ProjectStatusBadge status={projeto.status as ProjectStatus} />
-                        {isOverdue && (
-                          <Badge variant="destructive" className="text-xs">
-                            <AlertCircle className="h-3 w-3 mr-1" />
-                            Atrasado
-                          </Badge>
-                        )}
-                        {isPaid && (
-                          <Badge className="text-xs bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-400">
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            Pago
-                          </Badge>
-                        )}
-                        {hasPaymentPending && !isPaid && !isOverdue && (
-                          <Badge className="text-xs bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-400">
-                            <Clock className="h-3 w-3 mr-1" />
-                            Pendente
-                          </Badge>
-                        )}
-                      </div>
-                      <CardTitle className="text-lg line-clamp-2 leading-tight">{projeto.name}</CardTitle>
-                    </div>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="h-8 w-8 flex-shrink-0"
-                          data-testid={`button-delete-projeto-${projeto.id}`}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Excluir projeto?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta ação não pode ser desfeita. O projeto "{projeto.name}" e todas as suas transações serão permanentemente removidos.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel data-testid="button-cancel-delete">Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteProjectMutation.mutate(projeto.id)}
-                            data-testid="button-confirm-delete"
-                            className="bg-destructive hover:bg-destructive/90"
-                          >
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </CardHeader>
-                
-                <CardContent className="space-y-4 pb-4">
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <User className="h-3.5 w-3.5" />
-                      <span className="truncate">{projeto.client.name}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="h-3.5 w-3.5" />
-                      <span>{projeto.date}</span>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  {/* Financial Summary */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">Valor Total</span>
-                      <span className="text-sm font-semibold font-mono">{formatCurrency(projeto.valorCobrado)}</span>
-                    </div>
-                    
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">Recebido</span>
-                        <span className="font-medium text-green-600 dark:text-green-500">
-                          {formatCurrency(projeto.receitas)}
-                        </span>
-                      </div>
-                      <Progress 
-                        value={Math.min(projeto.percentualRecebido, 100)} 
-                        className="h-1.5"
-                      />
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-muted-foreground">{Math.min(projeto.percentualRecebido, 100).toFixed(0)}% recebido</span>
-                        {hasPaymentPending && (
-                          <span className="font-medium text-orange-600 dark:text-orange-500">
-                            Falta: {formatCurrency(projeto.faltaReceber)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-
-                <CardFooter className="flex gap-2 pt-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    data-testid={`button-add-receita-${projeto.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedProject(projeto);
-                      setOpenReceita(true);
-                    }}
-                  >
-                    <Plus className="h-3.5 w-3.5 mr-1.5" />
-                    Receita
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1"
-                    data-testid={`button-add-despesa-${projeto.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedProject(projeto);
-                      setOpenDespesa(true);
-                    }}
-                  >
-                    <Plus className="h-3.5 w-3.5 mr-1.5" />
-                    Despesa
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="flex-shrink-0"
-                    data-testid={`button-view-details-${projeto.id}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedProject(projeto);
-                    }}
-                  >
-                    <FileText className="h-3.5 w-3.5" />
-                  </Button>
-                </CardFooter>
-              </Card>
-            );
-          })}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Ordenar por:</span>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Ordenar" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">Mais Recentes</SelectItem>
+                <SelectItem value="valor_desc">Maior Valor</SelectItem>
+                <SelectItem value="valor_asc">Menor Valor</SelectItem>
+                <SelectItem value="recebido_desc">Mais Recebido (%)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-      )}
 
-      {/* Modal de Detalhes do Projeto */}
-      <Dialog open={!!selectedProject && !openReceita && !openDespesa} onOpenChange={() => setSelectedProject(null)}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-2xl">{selectedProject?.name}</DialogTitle>
-            <DialogDescription>
-              Cliente: {selectedProject?.client.name} | Data: {selectedProject?.date}
-            </DialogDescription>
-          </DialogHeader>
+        {isLoading ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {[...Array(8)].map((_, i) => <Skeleton key={i} className="h-[280px] w-full" />)}
+          </div>
+        ) : filteredProjetos.length > 0 ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {orderedProjetos.map((projeto) => {
+              const despesas = projeto.transactions
+                .filter(t => t.type === 'despesa')
+                .reduce((sum, t) => sum + parseFloat(String(t.value)), 0);
+              const lucro = projeto.receitas - despesas;
 
-          <div className="space-y-6">
-            {/* Status Workflow */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">Status do Projeto</h3>
-                <Select 
-                  value={selectedProject?.status} 
-                  onValueChange={handleStatusChange}
-                  disabled={updateProjectStatusMutation.isPending}
+              return (
+                <Card 
+                  key={projeto.id} 
+                  className="flex flex-col justify-between group overflow-hidden rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300"
                 >
-                  <SelectTrigger className="w-[200px]" data-testid="select-edit-status">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="orcamento">Orçamento</SelectItem>
-                    <SelectItem value="aprovado">Aprovado</SelectItem>
-                    <SelectItem value="execucao">Em Execução</SelectItem>
-                    <SelectItem value="finalizado">Finalizado</SelectItem>
-                    <SelectItem value="cancelado">Cancelado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              {selectedProject && selectedProject.status !== "cancelado" && (
-                <StatusWorkflow currentStatus={selectedProject.status as "orcamento" | "aprovado" | "execucao" | "finalizado"} />
-              )}
-              {selectedProject?.status === "cancelado" && (
-                <div className="text-center py-4 text-muted-foreground">
-                  Projeto cancelado
-                </div>
-              )}
-            </div>
-
-            {/* Cartão de Obras */}
-            {selectedProject && (
-              <CartaoObras
-                projectId={selectedProject.id}
-                projectName={selectedProject.name}
-                transactions={selectedProject.transactions}
-              />
-            )}
+                  <CardHeader 
+                    className="cursor-pointer"
+                    onClick={() => setSelectedProject(projeto)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <ProjectStatusBadge status={projeto.status} />
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        {projeto.paymentStatus === 'pago' && <CheckCircle2 className="h-3 w-3 text-green-500" />}
+                        {projeto.paymentStatus === 'atrasado' && <AlertCircle className="h-3 w-3 text-red-500" />}
+                        {projeto.paymentStatus === 'pendente' && <Clock className="h-3 w-3 text-yellow-500" />}
+                        <span className="capitalize">{projeto.paymentStatus}</span>
+                      </div>
+                    </div>
+                    <CardTitle className="text-lg font-semibold pt-2 group-hover:text-primary transition-colors">
+                      {projeto.name}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                      <User className="h-3 w-3" /> {projeto.client.name}
+                    </p>
+                    <p className="text-sm text-muted-foreground flex items-center gap-2">
+                      <Calendar className="h-3 w-3" /> {new Date(projeto.createdAt).toLocaleDateString('pt-BR')}
+                    </p>
+                  </CardHeader>
+                  <CardContent 
+                    className="cursor-pointer flex-grow"
+                    onClick={() => setSelectedProject(projeto)}
+                  >
+                    <Separator className="my-3" />
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Valor</span>
+                        <span className="font-medium">{formatCurrency(projeto.valorCobrado)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Recebido</span>
+                        <span className="font-medium text-green-600">{formatCurrency(projeto.receitas)}</span>
+                      </div>
+                      {projeto.status === 'finalizado' && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground font-bold">Lucro</span>
+                          <span className={`font-bold ${lucro >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                            {formatCurrency(lucro)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                    <Progress value={projeto.percentualRecebido} className="mt-4 h-2" />
+                    <p className="text-xs text-muted-foreground mt-1 text-right">{projeto.percentualRecebido.toFixed(0)}% recebido</p>
+                  </CardContent>
+                  <CardFooter className="bg-muted/40 px-6 py-3 transition-all duration-300 opacity-0 group-hover:opacity-100">
+                    <div className="flex w-full justify-end gap-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="sm" onClick={() => { setOpenReceita(true); setSelectedProject(projeto); }}>
+                              <TrendingUp className="h-4 w-4 text-green-500" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Adicionar Receita</p></TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="sm" onClick={() => { setOpenDespesa(true); setSelectedProject(projeto); }}>
+                              <TrendingDown className="h-4 w-4 text-red-500" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Adicionar Despesa</p></TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedProject(projeto)}>
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent><p>Ver Detalhes</p></TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <DropdownMenuItem className="text-red-500" onSelect={(e) => e.preventDefault()}>
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Você tem certeza?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Essa ação não pode ser desfeita. Isso excluirá permanentemente o projeto e todas as suas transações.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => deleteProjectMutation.mutate(projeto.id)} 
+                                  className="bg-red-500 hover:bg-red-600"
+                                >
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardFooter>
+                </Card>
+              );
+            })}
           </div>
-        </DialogContent>
-      </Dialog>
+        ) : (
+          <div className="text-center py-20">
+            <p className="text-lg text-muted-foreground">Nenhum projeto encontrado.</p>
+            <p className="text-sm text-muted-foreground">Tente ajustar os filtros ou o termo de busca.</p>
+          </div>
+        )}
 
-      {/* Dialog Receita */}
-      <Dialog open={openReceita} onOpenChange={setOpenReceita}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Registrar Receita</DialogTitle>
-            <DialogDescription>Adicione uma receita ao projeto {selectedProject?.name}</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={(e) => handleAddTransaction(e, "receita")} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="receita-description">Descrição</Label>
-              <Input 
-                id="receita-description" 
-                name="description"
-                placeholder="Ex: Pagamento parcial" 
-                data-testid="input-receita-description"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="receita-value">Valor</Label>
-              <Input 
-                id="receita-value" 
-                name="value"
-                type="number" 
-                step="0.01"
-                placeholder="0.00" 
-                data-testid="input-receita-value"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="receita-date">Data</Label>
-              <Input 
-                id="receita-date" 
-                name="date"
-                type="date" 
-                data-testid="input-receita-date"
-                required
-              />
-            </div>
-            <Button 
-              type="submit" 
-              className="w-full" 
-              data-testid="button-submit-receita"
-              disabled={createTransactionMutation.isPending}
-            >
-              {createTransactionMutation.isPending ? "Registrando..." : "Registrar Receita"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+        {/* Modal de detalhes do projeto */}
+        <Dialog open={!!selectedProject} onOpenChange={(open) => { if (!open) setSelectedProject(null); }}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Detalhes do Projeto</DialogTitle>
+              <DialogDescription>Informações e status</DialogDescription>
+            </DialogHeader>
+            {selectedProject && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <p className="text-sm"><strong>Projeto:</strong> {selectedProject.name}</p>
+                  <p className="text-sm"><strong>Cliente:</strong> {selectedProject.client.name}</p>
+                  <p className="text-sm"><strong>Data:</strong> {new Date(selectedProject.createdAt).toLocaleDateString('pt-BR')}</p>
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={selectedProject.status} onValueChange={handleStatusChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="orcamento">Orçamento</SelectItem>
+                      <SelectItem value="aprovado">Aprovado</SelectItem>
+                      <SelectItem value="execucao">Em Execução</SelectItem>
+                      <SelectItem value="finalizado">Finalizado</SelectItem>
+                      <SelectItem value="cancelado">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
-      {/* Dialog Despesa */}
-      <Dialog open={openDespesa} onOpenChange={setOpenDespesa}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Registrar Despesa</DialogTitle>
-            <DialogDescription>Adicione uma despesa ao projeto {selectedProject?.name}</DialogDescription>
-          </DialogHeader>
-          <form onSubmit={(e) => handleAddTransaction(e, "despesa")} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="despesa-description">Descrição</Label>
-              <Input 
-                id="despesa-description" 
-                name="description"
-                placeholder="Ex: Materiais" 
-                data-testid="input-despesa-description"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="despesa-value">Valor</Label>
-              <Input 
-                id="despesa-value" 
-                name="value"
-                type="number" 
-                step="0.01"
-                placeholder="0.00" 
-                data-testid="input-despesa-value"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="despesa-date">Data</Label>
-              <Input 
-                id="despesa-date" 
-                name="date"
-                type="date" 
-                data-testid="input-despesa-date"
-                required
-              />
-            </div>
-            <Button 
-              type="submit" 
-              className="w-full" 
-              data-testid="button-submit-despesa"
-              disabled={createTransactionMutation.isPending}
-            >
-              {createTransactionMutation.isPending ? "Registrando..." : "Registrar Despesa"}
-            </Button>
-          </form>
-        </DialogContent>
-      </Dialog>
+        {/* Modal de receita */}
+        <Dialog open={openReceita} onOpenChange={setOpenReceita}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Adicionar Receita</DialogTitle>
+              <DialogDescription>Preencha os dados da receita</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={(e) => handleAddTransaction(e, "receita")} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="receita-desc">Descrição</Label>
+                <Input id="receita-desc" name="description" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="receita-value">Valor</Label>
+                <Input id="receita-value" name="value" type="number" step="0.01" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="receita-date">Data</Label>
+                <Input id="receita-date" name="date" type="date" required />
+              </div>
+              <Button type="submit" disabled={createTransactionMutation.isPending}>
+                {createTransactionMutation.isPending ? "Registrando..." : "Registrar"}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de despesa */}
+        <Dialog open={openDespesa} onOpenChange={setOpenDespesa}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Adicionar Despesa</DialogTitle>
+              <DialogDescription>Preencha os dados da despesa</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={(e) => handleAddTransaction(e, "despesa")} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="despesa-desc">Descrição</Label>
+                <Input id="despesa-desc" name="description" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="despesa-value">Valor</Label>
+                <Input id="despesa-value" name="value" type="number" step="0.01" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="despesa-date">Data</Label>
+                <Input id="despesa-date" name="date" type="date" required />
+              </div>
+              <Button type="submit" disabled={createTransactionMutation.isPending}>
+                {createTransactionMutation.isPending ? "Registrando..." : "Registrar"}
+              </Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 }

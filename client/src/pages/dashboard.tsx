@@ -6,6 +6,7 @@ import { FileText, Users, DollarSign, TrendingUp, AlertCircle } from "lucide-rea
 import { ProjectStatusBadge } from "@/components/project-status-badge";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, Line, LineChart } from "recharts";
 import type { Project, Client } from "@shared/schema";
+import PageHeader from "@/components/layout/page-header";
 
 type ProjectStatus = "orcamento" | "aprovado" | "execucao" | "finalizado" | "cancelado";
 
@@ -63,37 +64,34 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">Visão geral do sistema de gestão HelpGlass</p>
-      </div>
+      <PageHeader title="Dashboard" subtitle="Visão geral do seu negócio" />
 
       {/* Metrics Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {statsLoading ? (
           <>
-            <Card>
+            <Card className="shadow-xs rounded-xl">
               <CardContent className="p-6">
                 <Skeleton className="h-4 w-24 mb-2" />
                 <Skeleton className="h-8 w-16 mb-2" />
                 <Skeleton className="h-3 w-20" />
               </CardContent>
             </Card>
-            <Card>
+            <Card className="shadow-xs rounded-xl">
               <CardContent className="p-6">
                 <Skeleton className="h-4 w-24 mb-2" />
                 <Skeleton className="h-8 w-16 mb-2" />
                 <Skeleton className="h-3 w-20" />
               </CardContent>
             </Card>
-            <Card>
+            <Card className="shadow-xs rounded-xl">
               <CardContent className="p-6">
                 <Skeleton className="h-4 w-24 mb-2" />
                 <Skeleton className="h-8 w-16 mb-2" />
                 <Skeleton className="h-3 w-20" />
               </CardContent>
             </Card>
-            <Card>
+            <Card className="shadow-xs rounded-xl">
               <CardContent className="p-6">
                 <Skeleton className="h-4 w-24 mb-2" />
                 <Skeleton className="h-8 w-16 mb-2" />
@@ -140,8 +138,8 @@ export default function Dashboard() {
       </div>
 
       {/* Charts */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="shadow-xs rounded-xl">
           <CardHeader>
             <CardTitle>Receitas vs Despesas (6 meses)</CardTitle>
           </CardHeader>
@@ -166,7 +164,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="shadow-xs rounded-xl">
           <CardHeader>
             <CardTitle>Evolução de Receitas</CardTitle>
           </CardHeader>
@@ -192,7 +190,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Projects */}
-      <Card>
+      <Card className="shadow-xs rounded-xl">
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Projetos Recentes</span>

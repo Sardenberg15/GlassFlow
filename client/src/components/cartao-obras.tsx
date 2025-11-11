@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { ArrowDownCircle, ArrowUpCircle, Upload, FileText, Trash2, Download } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useToast } from "@/hooks/use-toast";
@@ -27,7 +28,7 @@ const FILE_CATEGORIES = {
 type FileCategory = keyof typeof FILE_CATEGORIES;
 
 export function CartaoObras({ projectId, projectName, transactions }: CartaoObrasProps) {
-  const [selectedCategory, setSelectedCategory] = useState<FileCategory>("comprovante");
+  const [selectedCategory, setSelectedCategory] = useState<FileCategory>("nota_fiscal_recebida");
   const { toast } = useToast();
 
   const receitas = transactions.filter(t => t.type === "receita");
@@ -211,12 +212,12 @@ export function CartaoObras({ projectId, projectName, transactions }: CartaoObra
 
         <Separator />
 
-        {/* Arquivos do Projeto */}
+        {/* Documentos Fiscais */}
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
-              <h3 className="font-semibold">Documentos do Projeto</h3>
+              <h3 className="font-semibold">Documentos Fiscais</h3>
             </div>
           </div>
 
@@ -237,14 +238,26 @@ export function CartaoObras({ projectId, projectName, transactions }: CartaoObra
             <ObjectUploader
               maxNumberOfFiles={1}
               maxFileSize={10485760}
+              allowedFileTypes={["application/pdf", "application/xml", "text/xml", ".pdf", ".xml"]}
               onGetUploadParameters={handleGetUploadParameters}
               onComplete={handleUploadComplete}
               buttonClassName="gap-2"
+              note="Anexe apenas PDF ou XML (até 10MB). Arraste e solte ou selecione."
             >
               <Upload className="h-4 w-4" />
-              <span>Enviar Arquivo</span>
+              <span>{selectedCategory.startsWith("nota_fiscal") ? "Anexar Nota Fiscal" : "Enviar Arquivo"}</span>
             </ObjectUploader>
+
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <span>Rápido:</span>
+              <Button size="sm" variant="outline" onClick={() => setSelectedCategory("nota_fiscal_recebida")}>Recebida</Button>
+              <Button size="sm" variant="outline" onClick={() => setSelectedCategory("nota_fiscal_emitida")}>Emitida</Button>
+            </div>
           </div>
+
+          <p className="text-xs text-muted-foreground">
+            Aceitamos arquivos PDF ou XML. Tamanho máximo de 10MB. Use o botão acima ou arraste o arquivo na janela de upload.
+          </p>
 
           <ScrollArea className="h-[150px] rounded-md border p-4">
             <div className="space-y-2">
@@ -259,7 +272,15 @@ export function CartaoObras({ projectId, projectName, transactions }: CartaoObra
                       <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{file.fileName}</p>
-                        <p className="text-xs text-muted-foreground">{formatFileSize(file.fileSize)}</p>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="secondary" className="text-[10px]">
+                            {FILE_CATEGORIES[file.category as FileCategory] || file.category}
+                          </Badge>
+                          <p className="text-xs text-muted-foreground">{formatFileSize(file.fileSize)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {(() => { try { return new Date(file.createdAt as unknown as string).toLocaleDateString('pt-BR'); } catch { return String(file.createdAt); } })()}
+                          </p>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">

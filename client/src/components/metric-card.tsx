@@ -14,7 +14,7 @@ interface MetricCardProps {
 
 export function MetricCard({ title, value, icon: Icon, trend, iconColor = "bg-primary" }: MetricCardProps) {
   return (
-    <Card>
+    <Card className="shadow-xs rounded-xl">
       <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
         <div className={`${iconColor} rounded-full p-2`}>

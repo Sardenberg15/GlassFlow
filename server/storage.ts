@@ -262,4 +262,174 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new DatabaseStorage();
+// In-memory storage fallback for local development when DB is unreachable
+class MemoryStorage implements IStorage {
+  private clients: Client[] = [];
+  private projects: Project[] = [];
+  private transactions: Transaction[] = [];
+  private quotes: Quote[] = [];
+  private quoteItems: QuoteItem[] = [];
+  private projectFiles: ProjectFile[] = [];
+  private bills: Bill[] = [];
+
+  private nowISO(): string { return new Date().toISOString(); }
+  private newId(): string {
+    // crypto.randomUUID is available in current Node runtimes; fallback for older
+    return (globalThis as any).crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
+  }
+
+  // Clients
+  async getClients(): Promise<Client[]> {
+    return [...this.clients].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+  async getClient(id: string): Promise<Client | undefined> {
+    return this.clients.find(c => c.id === id);
+  }
+  async createClient(client: InsertClient): Promise<Client> {
+    const item: Client = { id: this.newId(), createdAt: this.nowISO(), ...client } as Client;
+    this.clients.push(item);
+    return item;
+  }
+  async updateClient(id: string, client: Partial<InsertClient>): Promise<Client | undefined> {
+    const idx = this.clients.findIndex(c => c.id === id);
+    if (idx === -1) return undefined;
+    this.clients[idx] = { ...this.clients[idx], ...client } as Client;
+    return this.clients[idx];
+  }
+  async deleteClient(id: string): Promise<void> {
+    this.clients = this.clients.filter(c => c.id !== id);
+  }
+
+  // Projects
+  async getProjects(): Promise<Project[]> {
+    return [...this.projects].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+  async getProject(id: string): Promise<Project | undefined> {
+    return this.projects.find(p => p.id === id);
+  }
+  async getProjectsByClient(clientId: string): Promise<Project[]> {
+    return this.projects.filter(p => p.clientId === clientId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+  async createProject(project: InsertProject): Promise<Project> {
+    const item: Project = { id: this.newId(), createdAt: this.nowISO(), ...project } as Project;
+    this.projects.push(item);
+    return item;
+  }
+  async updateProject(id: string, project: Partial<InsertProject>): Promise<Project | undefined> {
+    const idx = this.projects.findIndex(p => p.id === id);
+    if (idx === -1) return undefined;
+    this.projects[idx] = { ...this.projects[idx], ...project } as Project;
+    return this.projects[idx];
+  }
+  async deleteProject(id: string): Promise<void> {
+    this.projects = this.projects.filter(p => p.id !== id);
+    // Also cascade delete related bills and transactions in memory for consistency
+    this.bills = this.bills.filter(b => b.projectId !== id);
+    this.transactions = this.transactions.filter(t => t.projectId !== id);
+    this.projectFiles = this.projectFiles.filter(f => f.projectId !== id);
+  }
+
+  // Transactions
+  async getTransactions(): Promise<Transaction[]> {
+    return [...this.transactions].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+  async getTransaction(id: string): Promise<Transaction | undefined> {
+    return this.transactions.find(t => t.id === id);
+  }
+  async getTransactionsByProject(projectId: string): Promise<Transaction[]> {
+    return this.transactions.filter(t => t.projectId === projectId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+  async createTransaction(transaction: InsertTransaction): Promise<Transaction> {
+    const item: Transaction = { id: this.newId(), createdAt: this.nowISO(), ...transaction } as Transaction;
+    this.transactions.push(item);
+    return item;
+  }
+  async updateTransaction(id: string, transaction: Partial<InsertTransaction>): Promise<Transaction | undefined> {
+    const idx = this.transactions.findIndex(t => t.id === id);
+    if (idx === -1) return undefined;
+    this.transactions[idx] = { ...this.transactions[idx], ...transaction } as Transaction;
+    return this.transactions[idx];
+  }
+  async deleteTransaction(id: string): Promise<void> {
+    this.transactions = this.transactions.filter(t => t.id !== id);
+  }
+
+  // Quotes
+  async getQuotes(): Promise<Quote[]> {
+    return [...this.quotes].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+  async getQuote(id: string): Promise<Quote | undefined> {
+    return this.quotes.find(q => q.id === id);
+  }
+  async getQuotesByClient(clientId: string): Promise<Quote[]> {
+    return this.quotes.filter(q => q.clientId === clientId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+  async createQuote(quote: InsertQuote): Promise<Quote> {
+    const item: Quote = { id: this.newId(), createdAt: this.nowISO(), ...quote } as Quote;
+    this.quotes.push(item);
+    return item;
+  }
+  async updateQuote(id: string, quoteData: Partial<InsertQuote>): Promise<Quote | undefined> {
+    const idx = this.quotes.findIndex(q => q.id === id);
+    if (idx === -1) return undefined;
+    this.quotes[idx] = { ...this.quotes[idx], ...quoteData } as Quote;
+    return this.quotes[idx];
+  }
+  async deleteQuote(id: string): Promise<void> {
+    this.quotes = this.quotes.filter(q => q.id !== id);
+    this.quoteItems = this.quoteItems.filter(i => i.quoteId !== id);
+  }
+
+  // Quote Items
+  async getAllQuoteItems(): Promise<QuoteItem[]> { return [...this.quoteItems]; }
+  async getQuoteItems(quoteId: string): Promise<QuoteItem[]> { return this.quoteItems.filter(i => i.quoteId === quoteId); }
+  async createQuoteItem(item: InsertQuoteItem): Promise<QuoteItem> {
+    const newItem: QuoteItem = { id: this.newId(), ...item } as QuoteItem;
+    this.quoteItems.push(newItem);
+    return newItem;
+  }
+  async deleteQuoteItem(id: string): Promise<void> {
+    this.quoteItems = this.quoteItems.filter(i => i.id !== id);
+  }
+
+  // Project Files
+  async getProjectFiles(projectId: string): Promise<ProjectFile[]> {
+    return this.projectFiles.filter(f => f.projectId === projectId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+  async createProjectFile(file: InsertProjectFile): Promise<ProjectFile> {
+    const newFile: ProjectFile = { id: this.newId(), createdAt: this.nowISO(), ...file } as ProjectFile;
+    this.projectFiles.push(newFile);
+    return newFile;
+  }
+  async deleteProjectFile(id: string): Promise<void> {
+    this.projectFiles = this.projectFiles.filter(f => f.id !== id);
+  }
+
+  // Bills
+  async getBills(): Promise<Bill[]> {
+    return [...this.bills].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+  async getBill(id: string): Promise<Bill | undefined> {
+    return this.bills.find(b => b.id === id);
+  }
+  async getBillsByProject(projectId: string): Promise<Bill[]> {
+    return this.bills.filter(b => b.projectId === projectId).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }
+  async createBill(bill: InsertBill): Promise<Bill> {
+    const item: Bill = { id: this.newId(), createdAt: this.nowISO(), ...bill } as Bill;
+    this.bills.push(item);
+    return item;
+  }
+  async updateBill(id: string, billData: Partial<InsertBill>): Promise<Bill | undefined> {
+    const idx = this.bills.findIndex(b => b.id === id);
+    if (idx === -1) return undefined;
+    this.bills[idx] = { ...this.bills[idx], ...billData } as Bill;
+    return this.bills[idx];
+  }
+  async deleteBill(id: string): Promise<void> {
+    this.bills = this.bills.filter(b => b.id !== id);
+  }
+}
+
+const useMemory = process.env.USE_MEMORY_STORAGE === "1" || process.env.NODE_ENV === "development" && !process.env.DATABASE_URL;
+export const storage: IStorage = useMemory ? new MemoryStorage() : new DatabaseStorage();

@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 interface ObjectUploaderProps {
   maxNumberOfFiles?: number;
   maxFileSize?: number;
+  allowedFileTypes?: string[];
+  note?: string;
   onGetUploadParameters: () => Promise<{
     method: "PUT";
     url: string;
@@ -24,6 +26,8 @@ interface ObjectUploaderProps {
 export function ObjectUploader({
   maxNumberOfFiles = 1,
   maxFileSize = 10485760,
+  allowedFileTypes,
+  note,
   onGetUploadParameters,
   onComplete,
   buttonClassName,
@@ -35,6 +39,7 @@ export function ObjectUploader({
       restrictions: {
         maxNumberOfFiles,
         maxFileSize,
+        allowedFileTypes,
       },
       autoProceed: false,
     })
@@ -58,6 +63,7 @@ export function ObjectUploader({
         open={showModal}
         onRequestClose={() => setShowModal(false)}
         proudlyDisplayPoweredByUppy={false}
+        note={note}
       />
     </div>
   );

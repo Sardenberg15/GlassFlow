@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, FileText, Download, Trash2, Eye, Image as ImageIcon, Upload, Pencil } from "lucide-react";
+import { Plus, Search, FileText, Download, Trash2, Eye, Image as ImageIcon, Upload, Pencil, MoreHorizontal } from "lucide-react";
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { QuotePDF } from "@/components/quote-pdf";
 import {
@@ -47,9 +47,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import type { Quote, QuoteItem, Client } from "@shared/schema";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import PageHeader from "@/components/layout/page-header";
 
 export default function Orcamentos() {
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"todos" | "pendente" | "aprovado" | "recusado">("todos");
+  const [sortBy, setSortBy] = useState<"data" | "validade" | "valor">("data");
   const [openNew, setOpenNew] = useState(false);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
@@ -94,12 +100,32 @@ export default function Orcamentos() {
     : [];
 
   // Filter quotes
-  const filteredQuotes = quotes.filter(quote => {
-    const client = clients.find(c => c.id === quote.clientId);
-    const matchesSearch = quote.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         client?.name.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesSearch;
-  });
+  const filteredQuotes = quotes
+    .filter(quote => {
+      const client = clients.find(c => c.id === quote.clientId);
+      const matchesSearch = quote.number.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (client?.name || "").toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === "todos" || quote.status === statusFilter;
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      if (sortBy === "validade") {
+        return new Date(a.validUntil).getTime() - new Date(b.validUntil).getTime();
+      }
+      if (sortBy === "valor") {
+        const subtotalA = allItems.filter(i => i.quoteId === a.id).reduce((s, i) => s + parseFloat(String(i.total)), 0);
+        const subtotalB = allItems.filter(i => i.quoteId === b.id).reduce((s, i) => s + parseFloat(String(i.total)), 0);
+        const discA = parseFloat(String(a.discount || "0"));
+        const discB = parseFloat(String(b.discount || "0"));
+        const totalA = subtotalA - (subtotalA * discA) / 100;
+        const totalB = subtotalB - (subtotalB * discB) / 100;
+        return totalB - totalA; // maior valor primeiro
+      }
+      // default: data de criação
+      const da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return db - da; // mais recente primeiro
+    });
 
   // Generate quote number
   const generateQuoteNumber = () => {
@@ -415,11 +441,7 @@ export default function Orcamentos() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold" data-testid="text-page-title">Orçamentos</h1>
-          <p className="text-muted-foreground">Gere e gerencie orçamentos padronizados</p>
-        </div>
+      <PageHeader title="Orçamentos" subtitle="Crie e gerencie orçamentos para clientes">
         <Dialog open={openNew} onOpenChange={(open) => {
           setOpenNew(open);
           if (!open) {
@@ -429,7 +451,7 @@ export default function Orcamentos() {
           }
         }}>
           <DialogTrigger asChild>
-            <Button data-testid="button-new-quote">
+            <Button data-testid="button-new-quote" className="rounded-full">
               <Plus className="h-4 w-4 mr-2" />
               Novo Orçamento
             </Button>
@@ -749,164 +771,204 @@ export default function Orcamentos() {
             </form>
           </DialogContent>
         </Dialog>
-      </div>
+      </PageHeader>
 
-      {/* Search */}
-      <div className="flex gap-4">
+      {/* Toolbar: busca + filtros + ordenação */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar orçamentos..."
+            placeholder="Buscar por número ou cliente..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 rounded-full"
             data-testid="input-search"
           />
         </div>
+        <ToggleGroup type="single" value={statusFilter} onValueChange={(v) => v && setStatusFilter(v as any)} aria-label="Filtrar por status">
+          <ToggleGroupItem value="todos" className="rounded-full px-4">Todos</ToggleGroupItem>
+          <ToggleGroupItem value="pendente" className="rounded-full px-4">Pendente</ToggleGroupItem>
+          <ToggleGroupItem value="aprovado" className="rounded-full px-4">Aprovado</ToggleGroupItem>
+          <ToggleGroupItem value="recusado" className="rounded-full px-4">Recusado</ToggleGroupItem>
+        </ToggleGroup>
+        <div className="w-[200px]">
+          <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+            <SelectTrigger aria-label="Ordenar" className="rounded-full">
+              <SelectValue placeholder="Ordenar" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="data">Mais recente</SelectItem>
+              <SelectItem value="validade">Validade (asc)</SelectItem>
+              <SelectItem value="valor">Valor (desc)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* Quotes List */}
+      {/* Listagem em tabela */}
       {quotesLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader>
-                <Skeleton className="h-6 w-32" />
-              </CardHeader>
-              <CardContent>
-                <Skeleton className="h-20 w-full" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card className="shadow-xs">
+          <CardHeader>
+            <CardTitle>Orçamentos Criados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Número</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[...Array(4)].map((_, i) => (
+                  <TableRow key={i} className="hover:bg-muted/30">
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-8 w-24 ml-auto" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       ) : filteredQuotes.length === 0 ? (
-        <Card>
+        <Card className="shadow-xs">
+          <CardHeader>
+            <CardTitle>Orçamentos Criados</CardTitle>
+          </CardHeader>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <FileText className="h-12 w-12 text-muted-foreground mb-4" />
             <h3 className="text-lg font-semibold mb-2">Nenhum orçamento encontrado</h3>
-            <p className="text-sm text-muted-foreground">Crie seu primeiro orçamento clicando no botão acima</p>
+            <p className="text-sm text-muted-foreground">Ajuste os filtros ou crie um novo orçamento</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredQuotes.map(quote => {
-            const client = clients.find(c => c.id === quote.clientId);
-            const quoteItems = allItems.filter(item => item.quoteId === quote.id);
-            return (
-              <Card key={quote.id} data-testid={`card-quote-${quote.id}`}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg">{quote.number}</CardTitle>
-                      <p className="text-sm text-muted-foreground mt-1">{client?.name}</p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {getStatusBadge(quote.status)}
-                      <Button 
-                        variant="ghost" 
-                        size="icon"
-                        onClick={() => handleEditQuote(quote)}
-                        disabled={itemsLoading}
-                        data-testid={`button-edit-quote-${quote.id}`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            data-testid={`button-delete-quote-${quote.id}`}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Excluir orçamento?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta ação não pode ser desfeita. O orçamento "{quote.number}" será permanentemente removido do sistema.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel data-testid="button-cancel-delete">Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => deleteQuoteMutation.mutate(quote.id)}
-                              data-testid="button-confirm-delete"
-                              className="bg-destructive hover:bg-destructive/90"
-                            >
-                              Excluir
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Válido até:</span>
-                    <span>{new Date(quote.validUntil).toLocaleDateString('pt-BR')}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex-1"
-                      onClick={() => setSelectedQuote(quote)}
-                      data-testid={`button-view-quote-${quote.id}`}
-                    >
-                      <Eye className="h-4 w-4 mr-2" />
-                      Visualizar
-                    </Button>
-                    {client && quoteItems.length > 0 && (
-                      <PDFDownloadLink
-                        document={<QuotePDF quote={quote} client={client} items={quoteItems} />}
-                        fileName={`${quote.number}.pdf`}
-                        className="flex-1"
-                      >
-                        {({ loading }) => (
-                          <Button 
-                            variant="default" 
-                            size="sm" 
-                            className="w-full"
-                            disabled={loading}
-                            data-testid={`button-download-pdf-${quote.id}`}
-                          >
-                            <Download className="h-4 w-4 mr-2" />
-                            {loading ? 'Gerando...' : 'PDF'}
-                          </Button>
-                        )}
-                      </PDFDownloadLink>
-                    )}
-                  </div>
-                  {quote.status === 'pendente' && (
-                    <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={() => updateStatusMutation.mutate({ id: quote.id, status: 'aprovado' })}
-                        data-testid={`button-approve-${quote.id}`}
-                      >
-                        Aprovar
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        className="flex-1"
-                        onClick={() => updateStatusMutation.mutate({ id: quote.id, status: 'recusado' })}
-                        data-testid={`button-reject-${quote.id}`}
-                      >
-                        Recusar
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+        <Card className="shadow-xs">
+          <CardHeader>
+            <CardTitle>Orçamentos Criados</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Número</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredQuotes.map(quote => {
+                  const client = clients.find(c => c.id === quote.clientId);
+                  const items = allItems.filter(item => item.quoteId === quote.id);
+                  const subtotal = items.reduce((sum, item) => sum + parseFloat(String(item.total)), 0);
+                  const disc = parseFloat(String(quote.discount || "0"));
+                  const total = subtotal - (subtotal * disc) / 100;
+                  const dateStr = quote.createdAt ? new Date(quote.createdAt).toLocaleDateString('pt-BR') : new Date(quote.validUntil).toLocaleDateString('pt-BR');
+                  return (
+                    <TableRow key={quote.id} data-testid={`row-quote-${quote.id}`} className="hover:bg-muted/30">
+                      <TableCell className="font-medium">{quote.number}</TableCell>
+                      <TableCell>{client?.name}</TableCell>
+                      <TableCell>{dateStr}</TableCell>
+                      <TableCell className="font-mono">{formatCurrency(total)}</TableCell>
+                      <TableCell>{getStatusBadge(quote.status)}</TableCell>
+                      <TableCell className="text-right">
+                        <TooltipProvider>
+                          <div className="flex items-center justify-end gap-2">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button 
+                                  variant="outline" 
+                                  size="icon" 
+                                  onClick={() => setSelectedQuote(quote)}
+                                  data-testid={`button-view-quote-${quote.id}`}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Visualizar</TooltipContent>
+                            </Tooltip>
+
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" aria-label="Mais ações" className="rounded-full">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleEditQuote(quote)} disabled={itemsLoading}>
+                                  <Pencil className="h-4 w-4" /> Editar
+                                </DropdownMenuItem>
+                                {client && items.length > 0 && (
+                                  <DropdownMenuItem asChild>
+                                    <PDFDownloadLink
+                                      document={<QuotePDF quote={quote} client={client} items={items} />}
+                                      fileName={`${quote.number}.pdf`}
+                                    >
+                                      {({ loading }) => (
+                                        <span className={`flex items-center gap-2 ${loading ? 'opacity-60' : ''}`}>
+                                          <Download className="h-4 w-4" /> {loading ? 'Gerando...' : 'Baixar PDF'}
+                                        </span>
+                                      )}
+                                    </PDFDownloadLink>
+                                  </DropdownMenuItem>
+                                )}
+                                {quote.status === 'pendente' && (
+                                  <>
+                                    <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: quote.id, status: 'aprovado' })}>
+                                      ✅ Aprovar
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: quote.id, status: 'recusado' })}>
+                                      ❌ Recusar
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <DropdownMenuItem className="text-destructive" data-testid={`button-delete-quote-${quote.id}`}>
+                                      <Trash2 className="h-4 w-4" /> Excluir
+                                    </DropdownMenuItem>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Excluir orçamento?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        Esta ação não pode ser desfeita. O orçamento "{quote.number}" será permanentemente removido do sistema.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel data-testid="button-cancel-delete">Cancelar</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => deleteQuoteMutation.mutate(quote.id)}
+                                        data-testid="button-confirm-delete"
+                                        className="bg-destructive hover:bg-destructive/90"
+                                      >
+                                        Excluir
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        </TooltipProvider>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
 
       {/* View Quote Dialog */}

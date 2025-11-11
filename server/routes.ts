@@ -3,7 +3,12 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertClientSchema, insertProjectSchema, insertTransactionSchema, insertQuoteSchema, insertQuoteItemSchema, insertProjectFileSchema, insertBillSchema } from "@shared/schema";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import path from "path";
+import fs from "fs";
+import express from "express";
+import { randomUUID } from "crypto";
 import type { Project } from "@shared/schema";
+import { pool } from "./db";
 
 // Helper function to sync bills with project payment status
 async function syncProjectBills(project: Project) {
@@ -397,6 +402,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Object Storage Routes
   // NOTE: In production, these routes should be protected with authentication
+  // Local upload fallback (development): store files under attached_assets/uploads
+  const useLocalObjects = process.env.USE_LOCAL_OBJECTS === "1" && app.get("env") === "development";
+  const localUploadsDir = path.resolve(import.meta.dirname, "..", "attached_assets", "uploads");
+
+  if (useLocalObjects) {
+    // Ensure uploads dir exists
+    try {
+      fs.mkdirSync(localUploadsDir, { recursive: true });
+    } catch {}
+
+    // Accept binary PUT uploads to /objects/uploads/:id
+    app.put(
+      "/objects/uploads/:id",
+      express.raw({ type: "*/*", limit: "50mb" }),
+      async (req, res) => {
+        try {
+          const id = req.params.id;
+          const filePath = path.join(localUploadsDir, id);
+          fs.writeFileSync(filePath, req.body);
+          const meta = {
+            contentType: req.header("content-type") || "application/octet-stream",
+            size: req.body?.length || 0,
+          };
+          fs.writeFileSync(filePath + ".meta.json", JSON.stringify(meta));
+          res.status(200).end();
+        } catch (error) {
+          console.error("Local upload error:", error);
+          res.status(500).json({ error: "Failed to upload file" });
+        }
+      }
+    );
+
+    // Serve local uploads at /objects/uploads/:id
+    app.get("/objects/uploads/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const filePath = path.join(localUploadsDir, id);
+        if (!fs.existsSync(filePath)) {
+          return res.sendStatus(404);
+        }
+        let contentType = "application/octet-stream";
+        try {
+          const metaRaw = fs.readFileSync(filePath + ".meta.json", "utf8");
+          const meta = JSON.parse(metaRaw);
+          if (meta?.contentType) contentType = meta.contentType;
+        } catch {}
+        res.setHeader("Content-Type", contentType);
+        res.sendFile(filePath);
+      } catch (error) {
+        console.error("Local download error:", error);
+        res.status(500).json({ error: "Failed to download file" });
+      }
+    });
+  }
   app.get("/objects/:objectPath(*)", async (req, res) => {
     const objectStorageService = new ObjectStorageService();
     try {
@@ -413,6 +472,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/objects/upload", async (req, res) => {
     try {
+      if (useLocalObjects) {
+        const objectId = randomUUID();
+        const baseUrl = `${req.protocol}://${req.get("host")}`;
+        const uploadURL = `${baseUrl}/objects/uploads/${objectId}`;
+        return res.json({ uploadURL });
+      }
+
       const objectStorageService = new ObjectStorageService();
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
       res.json({ uploadURL });
@@ -522,6 +588,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete bill" });
+    }
+  });
+
+  // Admin: initialize schema in Supabase via server connection
+  app.post("/api/admin/init-schema", async (_req, res) => {
+    const ddlStatements: string[] = [
+      `CREATE EXTENSION IF NOT EXISTS pgcrypto;`,
+      `CREATE TABLE IF NOT EXISTS clients (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        name text NOT NULL,
+        contact text NOT NULL,
+        email text,
+        phone text NOT NULL,
+        address text,
+        cnpj_cpf text,
+        created_at timestamp NOT NULL DEFAULT now()
+      );`,
+      `CREATE TABLE IF NOT EXISTS projects (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        name text NOT NULL,
+        client_id varchar NOT NULL,
+        description text,
+        value numeric(10,2) NOT NULL,
+        type text NOT NULL,
+        status text NOT NULL DEFAULT 'orcamento',
+        date text NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT fk_projects_client FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+      );`,
+      `CREATE TABLE IF NOT EXISTS transactions (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        project_id varchar NOT NULL,
+        type text NOT NULL,
+        description text NOT NULL,
+        value numeric(10,2) NOT NULL,
+        date text NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT fk_transactions_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+      );`,
+      `CREATE TABLE IF NOT EXISTS quotes (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        client_id varchar NOT NULL,
+        number text NOT NULL,
+        status text NOT NULL DEFAULT 'pendente',
+        valid_until text NOT NULL,
+        local text,
+        tipo text,
+        discount numeric(5,2) DEFAULT '0',
+        observations text,
+        created_at timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT fk_quotes_client FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+      );`,
+      `CREATE TABLE IF NOT EXISTS quote_items (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        quote_id varchar NOT NULL,
+        description text NOT NULL,
+        quantity numeric(10,2) NOT NULL,
+        width numeric(10,2),
+        height numeric(10,2),
+        color_thickness text,
+        profile_color text,
+        accessory_color text,
+        line text,
+        delivery_date text,
+        item_observations text,
+        unit_price numeric(10,2) NOT NULL,
+        total numeric(10,2) NOT NULL,
+        image_url text,
+        created_at timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT fk_quote_items_quote FOREIGN KEY (quote_id) REFERENCES quotes(id) ON DELETE CASCADE
+      );`,
+      `CREATE TABLE IF NOT EXISTS project_files (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        project_id varchar NOT NULL,
+        file_name text NOT NULL,
+        file_type text NOT NULL,
+        file_size integer NOT NULL,
+        category text NOT NULL,
+        object_path text NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT fk_project_files_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
+      );`,
+      `CREATE TABLE IF NOT EXISTS bills (
+        id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
+        type text NOT NULL,
+        description text NOT NULL,
+        value numeric(10,2) NOT NULL,
+        due_date text NOT NULL,
+        status text NOT NULL DEFAULT 'pendente',
+        project_id varchar,
+        date text NOT NULL,
+        created_at timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT fk_bills_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE SET NULL
+      );`,
+    ];
+
+    try {
+      for (const sql of ddlStatements) {
+        await pool.query(sql);
+      }
+      return res.status(200).json({ status: "ok" });
+    } catch (err: any) {
+      return res.status(500).json({ error: String(err?.message || err) });
+    }
+  });
+
+  // Admin: check table existence
+  app.get("/api/admin/check", async (_req, res) => {
+    try {
+      const tables = [
+        'clients','projects','transactions','quotes','quote_items','project_files','bills'
+      ];
+      const results: Record<string, string | null> = {};
+      for (const t of tables) {
+        const r = await pool.query(`select to_regclass('public.${t}') as exists`);
+        results[t] = r.rows[0]?.exists ?? null;
+      }
+      return res.json({ ok: true, tables: results });
+    } catch (err: any) {
+      return res.status(500).json({ error: String(err?.message || err) });
     }
   });
 

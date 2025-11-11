@@ -14,6 +14,7 @@ import Projetos from "@/pages/projetos";
 import Orcamentos from "@/pages/orcamentos";
 import Financeiro from "@/pages/financeiro";
 import NotFound from "@/pages/not-found";
+import VendedorApp from "@/pages/vendedor";
 
 function Router() {
   return (
@@ -23,6 +24,8 @@ function Router() {
       <Route path="/projetos" component={Projetos} />
       <Route path="/orcamentos" component={Orcamentos} />
       <Route path="/financeiro" component={Financeiro} />
+      {/* App independente do vendedor (SPA sem router interno) */}
+      <Route path="/vendedor" component={VendedorApp} />
       <Route component={NotFound} />
     </Switch>
   );

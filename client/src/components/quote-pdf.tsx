@@ -209,28 +209,28 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
             <Text style={styles.clientLabel}>Contato:</Text>
             <Text>{client.contact}</Text>
           </View>
-          {client.email && (
+          {client.email ? (
             <View style={styles.clientRow}>
               <Text style={styles.clientLabel}>Email:</Text>
               <Text>{client.email}</Text>
             </View>
-          )}
+          ) : null}
           <View style={styles.clientRow}>
             <Text style={styles.clientLabel}>Telefone:</Text>
             <Text>{client.phone}</Text>
           </View>
-          {client.address && (
+          {client.address ? (
             <View style={styles.clientRow}>
               <Text style={styles.clientLabel}>Endereço:</Text>
               <Text>{client.address}</Text>
             </View>
-          )}
-          {client.cnpjCpf && (
+          ) : null}
+          {client.cnpjCpf ? (
             <View style={styles.clientRow}>
               <Text style={styles.clientLabel}>CNPJ/CPF:</Text>
               <Text>{client.cnpjCpf}</Text>
             </View>
-          )}
+          ) : null}
         </View>
 
         {/* Items */}
@@ -239,46 +239,46 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
             {/* Item Header with Image and Details */}
             <View style={styles.itemHeader}>
               {/* Image Section */}
-              {item.imageUrl && (
+              {item.imageUrl ? (
                 <View style={styles.imageSection}>
                   <Image 
                     src={item.imageUrl} 
                     style={styles.itemImage}
                   />
                 </View>
-              )}
+              ) : null}
               
               {/* Item Details */}
               <View style={styles.itemDetails}>
                 <Text style={styles.description}>{item.description}</Text>
                 
-                {item.profileColor && (
+                {item.profileColor ? (
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>*COR PERFIL:</Text>
                     <Text>{item.profileColor}</Text>
                   </View>
-                )}
+                ) : null}
                 
-                {item.accessoryColor && (
+                {item.accessoryColor ? (
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>*COR ACESSÓRIO:</Text>
                     <Text>{item.accessoryColor}</Text>
                   </View>
-                )}
+                ) : null}
                 
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
-                  {item.line && (
+                  {item.line ? (
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>LINHA:</Text>
                       <Text>{item.line}</Text>
                     </View>
-                  )}
-                  {item.deliveryDate && (
+                  ) : null}
+                  {item.deliveryDate ? (
                     <View style={styles.detailRow}>
                       <Text style={styles.detailLabel}>DATA ENTREGA:</Text>
                       <Text>{new Date(item.deliveryDate).toLocaleDateString('pt-BR')}</Text>
                     </View>
-                  )}
+                  ) : null}
                 </View>
               </View>
             </View>
@@ -306,12 +306,12 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
             </View>
 
             {/* Item Observations */}
-            {item.itemObservations && (
+            {item.itemObservations ? (
               <View style={styles.itemObservations}>
                 <Text style={styles.obsTitle}>📋 OBSERVAÇÕES DESTE ITEM</Text>
                 <Text style={styles.obsImportant}>{item.itemObservations}</Text>
               </View>
-            )}
+            ) : null}
           </View>
         ))}
 
@@ -336,12 +336,12 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
         </View>
 
         {/* General Observations */}
-        {quote.observations && (
+        {quote.observations ? (
           <View style={styles.generalObservations}>
             <Text style={styles.obsHeader}>OBSERVAÇÕES</Text>
             <Text style={styles.obsContent}>{quote.observations}</Text>
           </View>
-        )}
+        ) : null}
 
         {/* Footer */}
         <View style={styles.footer}>
