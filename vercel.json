@@ -1,0 +1,14 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist/public",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://YOUR_BACKEND_HOST/api/$1"
+    },
+    {
+      "source": "/objects/(.*)",
+      "destination": "https://YOUR_BACKEND_HOST/objects/$1"
+    }
+  ]
+}

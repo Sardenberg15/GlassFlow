@@ -6,6 +6,7 @@ import {
   quoteItems,
   projectFiles,
   bills,
+  transactionFiles,
   type Client, 
   type InsertClient,
   type Project,
@@ -21,8 +22,12 @@ import {
   type Bill,
   type InsertBill,
 } from "@shared/schema";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { eq, desc, and } from "drizzle-orm";
+
+// Local types for transaction files based on drizzle table
+export type TransactionFile = typeof transactionFiles.$inferSelect;
+export type InsertTransactionFile = typeof transactionFiles.$inferInsert;
 
 export interface IStorage {
   // Clients
@@ -47,6 +52,11 @@ export interface IStorage {
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   updateTransaction(id: string, transaction: Partial<InsertTransaction>): Promise<Transaction | undefined>;
   deleteTransaction(id: string): Promise<void>;
+
+  // Transaction Files
+  getTransactionFiles(projectId: string): Promise<TransactionFile[]>;
+  createTransactionFile(file: InsertTransactionFile): Promise<TransactionFile>;
+  deleteTransactionFile(id: string): Promise<void>;
   
   // Quotes
   getQuotes(): Promise<Quote[]>;
@@ -139,16 +149,82 @@ export class DatabaseStorage implements IStorage {
 
   // Transactions
   async getTransactions(): Promise<Transaction[]> {
-    return await db.select().from(transactions).orderBy(desc(transactions.createdAt));
+    const r = await pool.query<{
+      id: string;
+      projectId: string;
+      type: string;
+      description: string;
+      value: string;
+      date: string;
+      createdAt: Date;
+    }>(
+      `select 
+         id,
+         project_id as "projectId",
+         type,
+         description,
+         value::text as value,
+         date,
+         NULL::text as "receiptPath",
+         created_at as "createdAt"
+       from transactions
+       order by created_at desc`
+    );
+    return r.rows as unknown as Transaction[];
   }
 
   async getTransaction(id: string): Promise<Transaction | undefined> {
-    const [transaction] = await db.select().from(transactions).where(eq(transactions.id, id));
-    return transaction || undefined;
+    const r = await pool.query<{
+      id: string;
+      projectId: string;
+      type: string;
+      description: string;
+      value: string;
+      date: string;
+      createdAt: Date;
+    }>(
+      `select 
+         id,
+         project_id as "projectId",
+         type,
+         description,
+         value::text as value,
+         date,
+         NULL::text as "receiptPath",
+         created_at as "createdAt"
+       from transactions
+       where id = $1
+       limit 1`,
+      [id]
+    );
+    return (r.rows[0] as unknown as Transaction) || undefined;
   }
 
   async getTransactionsByProject(projectId: string): Promise<Transaction[]> {
-    return await db.select().from(transactions).where(eq(transactions.projectId, projectId));
+    const r = await pool.query<{
+      id: string;
+      projectId: string;
+      type: string;
+      description: string;
+      value: string;
+      date: string;
+      createdAt: Date;
+    }>(
+      `select 
+         id,
+         project_id as "projectId",
+         type,
+         description,
+         value::text as value,
+         date,
+         NULL::text as "receiptPath",
+         created_at as "createdAt"
+       from transactions
+       where project_id = $1
+       order by created_at desc`,
+      [projectId]
+    );
+    return r.rows as unknown as Transaction[];
   }
 
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
@@ -157,12 +233,59 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateTransaction(id: string, updateData: Partial<InsertTransaction>): Promise<Transaction | undefined> {
-    const [transaction] = await db.update(transactions).set(updateData).where(eq(transactions.id, id)).returning();
-    return transaction || undefined;
+    try {
+      console.log("storage.updateTransaction called", { id, updateData });
+      const [transaction] = await db
+        .update(transactions)
+        .set(updateData)
+        .where(eq(transactions.id, id))
+        .returning();
+      console.log("storage.updateTransaction result", { id, transaction });
+      return transaction || undefined;
+    } catch (err) {
+      console.error("storage.updateTransaction error", err);
+      throw err;
+    }
   }
 
   async deleteTransaction(id: string): Promise<void> {
     await db.delete(transactions).where(eq(transactions.id, id));
+  }
+
+  // Transaction Files
+  async getTransactionFiles(projectId: string): Promise<TransactionFile[]> {
+    // Use raw SQL with explicit cast to avoid uuid/text operator mismatch
+    const r = await pool.query<{
+      id: string;
+      transactionId: string;
+      fileName: string;
+      fileType: string;
+      fileSize: number;
+      objectPath: string;
+      uploadedAt: Date;
+    }>(
+      `select 
+         tf.id,
+         tf.transaction_id::text as "transactionId",
+         tf.file_name as "fileName",
+         tf.file_type as "fileType",
+         tf.file_size as "fileSize",
+         tf.object_path as "objectPath",
+         tf.uploaded_at as "uploadedAt"
+       from transaction_files tf
+       join transactions t on t.id::text = tf.transaction_id::text
+       where t.project_id = $1
+       order by tf.uploaded_at desc`,
+      [projectId]
+    );
+    return r.rows as unknown as TransactionFile[];
+  }
+  async createTransactionFile(insertFile: InsertTransactionFile): Promise<TransactionFile> {
+    const [file] = await db.insert(transactionFiles).values(insertFile).returning();
+    return file;
+  }
+  async deleteTransactionFile(id: string): Promise<void> {
+    await db.delete(transactionFiles).where(eq(transactionFiles.id, id));
   }
 
   // Quotes
@@ -271,8 +394,9 @@ class MemoryStorage implements IStorage {
   private quoteItems: QuoteItem[] = [];
   private projectFiles: ProjectFile[] = [];
   private bills: Bill[] = [];
+  private transactionFilesMem: TransactionFile[] = [];
 
-  private nowISO(): string { return new Date().toISOString(); }
+  private nowISO(): Date { return new Date(); }
   private newId(): string {
     // crypto.randomUUID is available in current Node runtimes; fallback for older
     return (globalThis as any).crypto?.randomUUID?.() || Math.random().toString(36).slice(2);
@@ -352,6 +476,22 @@ class MemoryStorage implements IStorage {
   }
   async deleteTransaction(id: string): Promise<void> {
     this.transactions = this.transactions.filter(t => t.id !== id);
+  }
+
+  // Transaction Files
+  async getTransactionFiles(projectId: string): Promise<TransactionFile[]> {
+    const transactionIds = this.transactions.filter(t => t.projectId === projectId).map(t => t.id);
+    return this.transactionFilesMem
+      .filter(f => transactionIds.includes(f.transactionId))
+      .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+  }
+  async createTransactionFile(file: InsertTransactionFile): Promise<TransactionFile> {
+    const newFile: TransactionFile = { id: this.newId(), uploadedAt: this.nowISO(), ...file } as TransactionFile;
+    this.transactionFilesMem.push(newFile);
+    return newFile;
+  }
+  async deleteTransactionFile(id: string): Promise<void> {
+    this.transactionFilesMem = this.transactionFilesMem.filter(f => f.id !== id);
   }
 
   // Quotes

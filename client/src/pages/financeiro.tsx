@@ -74,8 +74,10 @@ export default function Financeiro() {
   });
 
   const updateTransactionMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => 
-      apiRequest("PATCH", `/api/transactions/${id}`, data),
+    mutationFn: ({ id, data }: { id: string; data: any }) => {
+      console.log("Financeiro PATCH /api/transactions", { id, data });
+      return apiRequest("PATCH", `/api/transactions/${id}`, data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
       queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
@@ -86,10 +88,12 @@ export default function Financeiro() {
         description: "A transação foi atualizada com sucesso.",
       });
     },
-    onError: () => {
+    onError: (error: any) => {
+      const message = error?.message || "Não foi possível atualizar a transação.";
+      console.error("Financeiro updateTransaction error:", error);
       toast({
         title: "Erro",
-        description: "Não foi possível atualizar a transação.",
+        description: message,
         variant: "destructive",
       });
     },

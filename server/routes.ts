@@ -185,10 +185,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Transactions Routes
   app.get("/api/transactions", async (req, res) => {
     try {
+      const { projectId } = req.query as { projectId?: string };
+      if (projectId) {
+        const transactions = await storage.getTransactionsByProject(projectId);
+        return res.json(transactions);
+      }
       const transactions = await storage.getTransactions();
       res.json(transactions);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch transactions" });
+      console.error("GET /api/transactions error:", error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: "Failed to fetch transactions", details: message });
     }
   });
 
@@ -197,7 +204,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const transactions = await storage.getTransactionsByProject(req.params.projectId);
       res.json(transactions);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch project transactions" });
+      console.error("GET /api/projects/:projectId/transactions error:", error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: "Failed to fetch project transactions", details: message });
     }
   });
 
@@ -221,10 +230,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/transactions/:id", async (req, res) => {
     try {
-      const transaction = await storage.updateTransaction(req.params.id, req.body);
+      // Validate and strip unknown fields to avoid updating forbidden columns (e.g., id)
+      const validatedData = insertTransactionSchema.partial().parse(req.body);
+
+      console.log("PATCH /api/transactions/:id incoming", {
+        id: req.params.id,
+        body: req.body,
+        validated: validatedData,
+      });
+
+      const transaction = await storage.updateTransaction(req.params.id, validatedData);
       if (!transaction) {
         return res.status(404).json({ error: "Transaction not found" });
       }
+
+      console.log("PATCH /api/transactions/:id updated", { id: req.params.id, transaction });
       
       // Sync bills when transaction changes
       const project = await storage.getProject(transaction.projectId);
@@ -234,7 +254,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.json(transaction);
     } catch (error) {
-      res.status(400).json({ error: "Failed to update transaction" });
+      console.error("Transaction update error:", error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(400).json({ error: "Failed to update transaction", details: message });
     }
   });
 
@@ -256,6 +278,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete transaction" });
+    }
+  });
+
+  // Rotas para anexos de transações
+  app.get("/api/transactions/files", async (req, res) => {
+    try {
+      const { projectId } = req.query;
+      if (!projectId) {
+        return res.status(400).json({ error: "Project ID is required" });
+      }
+      const files = await storage.getTransactionFiles(projectId as string);
+      res.json(files);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: "Failed to fetch transaction files", details: message });
+    }
+  });
+
+  app.post("/api/transactions/files", async (req, res) => {
+    try {
+      const { transactionId, fileName, fileType, fileSize, objectPath } = req.body;
+      
+      if (!transactionId || !fileName || !objectPath) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // Normalize object path when using object storage signed URLs
+      const objectStorageService = new ObjectStorageService();
+      const normalizedPath = objectStorageService.normalizeObjectEntityPath(objectPath);
+
+      const file = await storage.createTransactionFile({
+        transactionId,
+        fileName,
+        fileType: fileType || "application/octet-stream",
+        fileSize: fileSize || 0,
+        objectPath: normalizedPath,
+        uploadedAt: new Date()
+      });
+
+      res.status(201).json(file);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create transaction file" });
+    }
+  });
+
+  // Project status update route to support client calls
+  app.put("/api/projects/:id/status", async (req, res) => {
+    try {
+      const { status } = req.body as { status?: string };
+      if (!status) {
+        return res.status(400).json({ error: "Status is required" });
+      }
+      const project = await storage.updateProject(req.params.id, { status });
+      if (!project) {
+        return res.status(404).json({ error: "Project not found" });
+      }
+      // Optionally sync bills if status affects billing (kept simple here)
+      res.json(project);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update project status" });
+    }
+  });
+
+  app.delete("/api/transactions/files/:id", async (req, res) => {
+    try {
+      await storage.deleteTransactionFile(req.params.id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete transaction file" });
     }
   });
 
@@ -294,7 +385,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         margem: parseFloat(margem.toFixed(1)),
       });
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch dashboard stats" });
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("GET /api/dashboard/stats error:", error);
+      res.status(500).json({ error: "Failed to fetch dashboard stats", details: message });
     }
   });
 
@@ -670,6 +763,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         created_at timestamp NOT NULL DEFAULT now(),
         CONSTRAINT fk_project_files_project FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE
       );`,
+      `CREATE TABLE IF NOT EXISTS transaction_files (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        transaction_id uuid NOT NULL,
+        file_name text NOT NULL,
+        file_type text NOT NULL,
+        file_size integer NOT NULL,
+        object_path text NOT NULL,
+        uploaded_at timestamp NOT NULL DEFAULT now()
+      );`,
+      // Ensure column types match existing transactions table (uuid)
+      `DO $$ BEGIN
+         BEGIN
+           ALTER TABLE transaction_files
+             ALTER COLUMN transaction_id TYPE uuid USING transaction_id::uuid;
+         EXCEPTION WHEN undefined_table OR undefined_column THEN
+           -- ignore if table or column doesn't exist yet
+           NULL;
+         END;
+       END $$;`,
       `CREATE TABLE IF NOT EXISTS bills (
         id varchar PRIMARY KEY DEFAULT gen_random_uuid(),
         type text NOT NULL,
@@ -698,7 +810,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/check", async (_req, res) => {
     try {
       const tables = [
-        'clients','projects','transactions','quotes','quote_items','project_files','bills'
+        'clients','projects','transactions','quotes','quote_items','project_files','transaction_files','bills'
       ];
       const results: Record<string, string | null> = {};
       for (const t of tables) {
@@ -707,6 +819,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       return res.json({ ok: true, tables: results });
     } catch (err: any) {
+      return res.status(500).json({ error: String(err?.message || err) });
+    }
+  });
+
+  // Admin: diagnostic for transactions table
+  app.get("/api/admin/diag/transactions", async (_req, res) => {
+    try {
+      const count = await pool.query('select count(*)::int as count from transactions');
+      const sample = await pool.query('select id, project_id, type, description, value, date, created_at from transactions order by created_at desc limit 5');
+      return res.json({ count: count.rows[0]?.count ?? 0, sample: sample.rows });
+    } catch (err: any) {
+      console.error('Admin diag transactions error:', err);
       return res.status(500).json({ error: String(err?.message || err) });
     }
   });

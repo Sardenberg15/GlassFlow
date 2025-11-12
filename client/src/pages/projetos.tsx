@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -10,8 +11,8 @@ import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Search, Calendar, User, Trash2, DollarSign, AlertCircle, CheckCircle2, Clock, TrendingUp, TrendingDown, AlertTriangle, FileText, MoreHorizontal } from "lucide-react";
 import { ProjectStatusBadge } from "@/components/project-status-badge";
-import { CartaoObras } from "@/components/cartao-obras";
-import { GestaoObraPanel } from "@/components/gestao-obra-panel";
+// import { CartaoObras } from "@/components/cartao-obras";
+// import { GestaoObraPanel } from "@/components/gestao-obra-panel";
 import { StatusWorkflow } from "@/components/status-workflow";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -58,6 +59,7 @@ type ProjectWithTransactions = Project & {
 type PaymentFilter = "todos" | "pago" | "pendente" | "atrasado";
 
 export default function Projetos() {
+  const [, navigate] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("todos");
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("todos");
@@ -116,8 +118,12 @@ export default function Projetos() {
       let paymentStatus: "pago" | "pendente" | "atrasado" = "pendente";
       if (percentualRecebido >= 100) {
         paymentStatus = "pago";
-      } else if (projeto.status === "finalizado" && faltaReceber > 0) {
-        paymentStatus = "atrasado";
+      } else {
+        const isFinalizado = projeto.status === "finalizado" || projeto.status === "concluido";
+        const isPrazoVencido = new Date(projeto.date) < new Date();
+        if (isFinalizado && faltaReceber > 0 && isPrazoVencido) {
+          paymentStatus = "atrasado";
+        }
       }
 
       return {
@@ -531,7 +537,7 @@ export default function Projetos() {
                 >
                   <CardHeader 
                     className="cursor-pointer"
-                    onClick={() => setSelectedProject(projeto)}
+                    onClick={() => navigate(`/projetos/${projeto.id}`)}
                   >
                     <div className="flex items-start justify-between">
                       <ProjectStatusBadge status={projeto.status} />
@@ -554,7 +560,7 @@ export default function Projetos() {
                   </CardHeader>
                   <CardContent 
                     className="cursor-pointer flex-grow"
-                    onClick={() => setSelectedProject(projeto)}
+                    onClick={() => navigate(`/projetos/${projeto.id}`)}
                   >
                     <Separator className="my-3" />
                     <div className="space-y-2 text-sm">
@@ -599,7 +605,7 @@ export default function Projetos() {
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedProject(projeto)}>
+                            <Button variant="ghost" size="sm" onClick={() => navigate(`/projetos/${projeto.id}`)}>
                               <FileText className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
@@ -653,40 +659,7 @@ export default function Projetos() {
           </div>
         )}
 
-        {/* Modal de detalhes do projeto */}
-        <Dialog open={!!selectedProject} onOpenChange={(open) => { if (!open) setSelectedProject(null); }}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Detalhes do Projeto</DialogTitle>
-              <DialogDescription>Informações e status</DialogDescription>
-            </DialogHeader>
-            {selectedProject && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-sm"><strong>Projeto:</strong> {selectedProject.name}</p>
-                  <p className="text-sm"><strong>Cliente:</strong> {selectedProject.client.name}</p>
-                  <p className="text-sm"><strong>Data:</strong> {new Date(selectedProject.createdAt).toLocaleDateString('pt-BR')}</p>
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select value={selectedProject.status} onValueChange={handleStatusChange}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="orcamento">Orçamento</SelectItem>
-                      <SelectItem value="aprovado">Aprovado</SelectItem>
-                      <SelectItem value="execucao">Em Execução</SelectItem>
-                      <SelectItem value="finalizado">Finalizado</SelectItem>
-                      <SelectItem value="cancelado">Cancelado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+        {/* Removido modal de detalhes do projeto — clique navega para página completa */}
 
         {/* Modal de receita */}
         <Dialog open={openReceita} onOpenChange={setOpenReceita}>

@@ -33,6 +33,7 @@ export const transactions = pgTable("transactions", {
   description: text("description").notNull(),
   value: decimal("value", { precision: 10, scale: 2 }).notNull(),
   date: text("date").notNull(),
+  receiptPath: text("receipt_path"), // caminho do comprovante/anexo
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -47,6 +48,16 @@ export const quotes = pgTable("quotes", {
   discount: decimal("discount", { precision: 5, scale: 2 }).default("0"), // desconto em percentual (ex: 10.50 = 10,5%)
   observations: text("observations"), // observações gerais
   createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const transactionFiles = pgTable("transaction_files", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  transactionId: varchar("transaction_id").notNull().references(() => transactions.id, { onDelete: 'cascade' }),
+  fileName: text("file_name").notNull(),
+  fileType: text("file_type").notNull(),
+  fileSize: integer("file_size").notNull(),
+  objectPath: text("object_path").notNull(),
+  uploadedAt: timestamp("uploaded_at").defaultNow().notNull(),
 });
 
 export const quoteItems = pgTable("quote_items", {
