@@ -84,6 +84,8 @@ export class ObjectStorageService {
       return;
     }
 
+    console.log(`Attempting to download object from bucket '${file.bucket}' with path '${file.path}'`);
+
     const { data, error } = await supabase
       .storage
       .from(file.bucket)

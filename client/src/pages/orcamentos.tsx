@@ -351,7 +351,7 @@ export default function Orcamentos() {
       // Get upload URL
       const uploadResponse = await apiRequest("POST", "/api/objects/upload", {
         bucketName: "project-files",
-        pathPrefix: "quote-item-imagens"
+        pathPrefix: "quote-item-images"
       });
       const { uploadURL } = await uploadResponse.json();
 
@@ -379,7 +379,9 @@ export default function Orcamentos() {
       // We want to store: /objects/bucketName/pathPrefix/uuid
 
       // Since we know the bucket and prefix we requested:
-      const targetPath = `/objects/project-files/quote-item-imagens/${objectId}`;
+      const pathParts = pathname.split('/');
+      const objectId = pathParts[pathParts.length - 1].split('?')[0];
+      const targetPath = `/objects/project-files/quote-item-images/${objectId}`;
       const publicPath = targetPath;
 
       // Update item with normalized public path
