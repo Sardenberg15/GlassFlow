@@ -21,27 +21,36 @@ export class ObjectNotFoundError extends Error {
 }
 
 export class ObjectStorageService {
-  constructor() {}
+  constructor() { }
 
   async getObjectEntityUploadURL(): Promise<string> {
-    if (!supabase) throw new Error("Supabase not configured");
-    
+    if (!supabase) {
+      console.error("Supabase client is not initialized. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
+      throw new Error("Supabase not configured");
+    }
+
     const objectId = randomUUID();
-    const path = `${objectId}`; 
+    const path = `${objectId}`;
+
+    console.log(`Attempting to create signed upload URL for bucket '${BUCKET_NAME}' and path '${path}'`);
 
     const { data, error } = await supabase
       .storage
       .from(BUCKET_NAME)
       .createSignedUploadUrl(path);
 
-    if (error) throw error;
+    if (error) {
+      console.error("Supabase createSignedUploadUrl error:", error);
+      throw error;
+    }
+    console.log("Successfully generated upload URL");
     return data.signedUrl;
   }
 
   async getObjectEntityFile(objectPath: string): Promise<{ bucket: string, path: string }> {
     // objectPath comes from /objects/:objectPath(*)
     // We expect /objects/uuid or similar
-    
+
     if (!objectPath.startsWith("/objects/")) {
       throw new ObjectNotFoundError();
     }
@@ -52,8 +61,8 @@ export class ObjectStorageService {
 
   async downloadObject(file: { bucket: string, path: string }, res: Response) {
     if (!supabase) {
-        res.status(500).json({ error: "Supabase not configured" });
-        return;
+      res.status(500).json({ error: "Supabase not configured" });
+      return;
     }
 
     const { data, error } = await supabase
@@ -69,7 +78,7 @@ export class ObjectStorageService {
 
     const arrayBuffer = await data.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    
+
     res.setHeader('Content-Type', data.type || 'application/octet-stream');
     res.setHeader('Content-Length', buffer.length);
     res.send(buffer);
@@ -80,20 +89,20 @@ export class ObjectStorageService {
     // Supabase signed URLs contain the path.
     // But for simplicity, we'll assume the client might send the path or we just return it as is if it's not a known URL format.
     // If it's a URL, we try to extract the last part.
-    
+
     if (rawPath.startsWith("http")) {
-        try {
-            const url = new URL(rawPath);
-            // Try to find the object ID from the path
-            // Supabase URL: .../storage/v1/object/upload/sign/uploads/uuid?...
-            const parts = url.pathname.split('/');
-            const uuid = parts[parts.length - 1];
-            if (uuid) {
-                return `/objects/${uuid}`;
-            }
-        } catch {
-            // ignore
+      try {
+        const url = new URL(rawPath);
+        // Try to find the object ID from the path
+        // Supabase URL: .../storage/v1/object/upload/sign/uploads/uuid?...
+        const parts = url.pathname.split('/');
+        const uuid = parts[parts.length - 1];
+        if (uuid) {
+          return `/objects/${uuid}`;
         }
+      } catch {
+        // ignore
+      }
     }
     return rawPath;
   }
