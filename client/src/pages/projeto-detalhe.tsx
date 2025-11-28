@@ -63,6 +63,7 @@ export default function ProjetoDetalhe() {
 
   const handleAddTransactionMutation = useMutation({
     mutationFn: async (payload: { type: "receita" | "despesa"; description: string; value: string; date: string }) => {
+      console.log("POST /api/transactions payload", { ...payload, projectId });
       const response = await apiRequest("POST", "/api/transactions", { ...payload, projectId });
       return response.json();
     },
@@ -72,8 +73,17 @@ export default function ProjetoDetalhe() {
       setOpenReceita(false);
       setOpenDespesa(false);
     },
-    onError: () => {
-      toast({ title: "Erro ao adicionar transação", variant: "destructive" });
+    onError: (error: any) => {
+      // Try to surface server-provided error details when available
+      let description = error?.message || "Erro ao adicionar transação";
+      try {
+        const jsonPart = description.split(": ").slice(1).join(": ");
+        const parsed = JSON.parse(jsonPart);
+        if (parsed?.details) description = parsed.details;
+        else if (parsed?.error) description = parsed.error;
+      } catch {}
+      toast({ title: "Erro ao adicionar transação", description, variant: "destructive" });
+      console.error("Add transaction error:", error);
     }
   });
 
@@ -196,6 +206,7 @@ export default function ProjetoDetalhe() {
     );
   }
 
+  const isAdminFolder = (project.description || '').toLowerCase().startsWith('pasta administrativa');
   const totalReceitas = transactions
     .filter((t: Transaction) => t.type === "receita")
     .reduce((sum: number, t: Transaction) => sum + parseFloat(t.value), 0);
@@ -219,40 +230,44 @@ export default function ProjetoDetalhe() {
               </CardTitle>
               <p className="text-muted-foreground mt-2">{project.description}</p>
             </div>
-            <div className="flex items-center gap-2">
-              <Label>Status:</Label>
-              <Select
-                value={project.status}
-                onValueChange={(value) => handleStatusChangeMutation.mutate(value)}
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="orcamento">Orçamento</SelectItem>
-                  <SelectItem value="aprovado">Aprovado</SelectItem>
-                  <SelectItem value="execucao">Execução</SelectItem>
-                  <SelectItem value="finalizado">Finalizado</SelectItem>
-                  <SelectItem value="cancelado">Cancelado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {!isAdminFolder && (
+              <div className="flex items-center gap-2">
+                <Label>Status:</Label>
+                <Select
+                  value={project.status}
+                  onValueChange={(value) => handleStatusChangeMutation.mutate(value)}
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="orcamento">Orçamento</SelectItem>
+                    <SelectItem value="aprovado">Aprovado</SelectItem>
+                    <SelectItem value="execucao">Execução</SelectItem>
+                    <SelectItem value="finalizado">Finalizado</SelectItem>
+                    <SelectItem value="cancelado">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>
           {/* Cards de resumo financeiro */}
           <div className="grid gap-4 md:grid-cols-3">
-            <Card className="bg-green-50 border-green-200">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-green-800">Total Receitas</CardTitle>
-                <TrendingUp className="h-4 w-4 text-green-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-700">
-                  R$ {totalReceitas.toFixed(2)}
-                </div>
-              </CardContent>
-            </Card>
+            {!isAdminFolder && (
+              <Card className="bg-green-50 border-green-200">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-green-800">Total Receitas</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-700">
+                    R$ {totalReceitas.toFixed(2)}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             <Card className="bg-red-50 border-red-200">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -266,19 +281,21 @@ export default function ProjetoDetalhe() {
               </CardContent>
             </Card>
 
-            <Card className={saldo >= 0 ? "bg-blue-50 border-blue-200" : "bg-orange-50 border-orange-200"}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className={saldo >= 0 ? "text-sm font-medium text-blue-800" : "text-sm font-medium text-orange-800"}>
-                  Saldo
-                </CardTitle>
-                <FileText className={saldo >= 0 ? "h-4 w-4 text-blue-600" : "h-4 w-4 text-orange-600"} />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${saldo >= 0 ? "text-blue-700" : "text-orange-700"}`}>
-                  R$ {saldo.toFixed(2)}
-                </div>
-              </CardContent>
-            </Card>
+            {!isAdminFolder && (
+              <Card className={saldo >= 0 ? "bg-blue-50 border-blue-200" : "bg-orange-50 border-orange-200"}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className={saldo >= 0 ? "text-sm font-medium text-blue-800" : "text-sm font-medium text-orange-800"}>
+                    Saldo
+                  </CardTitle>
+                  <FileText className={saldo >= 0 ? "h-4 w-4 text-blue-600" : "h-4 w-4 text-orange-600"} />
+                </CardHeader>
+                <CardContent>
+                  <div className={`text-2xl font-bold ${saldo >= 0 ? "text-blue-700" : "text-orange-700"}`}>
+                    R$ {saldo.toFixed(2)}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -328,17 +345,19 @@ export default function ProjetoDetalhe() {
               </CardContent>
             </Card>
 
-            <GestaoObraPanel 
-              project={{
-                id: project.id,
-                name: project.name,
-                value: project.value,
-                status: project.status,
-                transactions: transactions
-              }}
-              onAddReceita={() => setOpenReceita(true)}
-              onAddDespesa={() => setOpenDespesa(true)}
-            />
+            {!isAdminFolder && (
+              <GestaoObraPanel 
+                project={{
+                  id: project.id,
+                  name: project.name,
+                  value: project.value,
+                  status: project.status,
+                  transactions: transactions
+                }}
+                onAddReceita={() => setOpenReceita(true)}
+                onAddDespesa={() => setOpenDespesa(true)}
+              />
+            )}
           </div>
         </TabsContent>
 
@@ -349,9 +368,11 @@ export default function ProjetoDetalhe() {
                 <CardTitle className="flex items-center justify-between">
                   <span>Transações Financeiras</span>
                   <div className="flex gap-2">
-                    <Button onClick={() => setOpenReceita(true)} variant="success" className="bg-green-600 hover:bg-green-700">
-                      + Receita
-                    </Button>
+                    {!isAdminFolder && (
+                      <Button onClick={() => setOpenReceita(true)} variant="success" className="bg-green-600 hover:bg-green-700">
+                        + Receita
+                      </Button>
+                    )}
                     <Button onClick={() => setOpenDespesa(true)} variant="destructive">
                       + Despesa
                     </Button>

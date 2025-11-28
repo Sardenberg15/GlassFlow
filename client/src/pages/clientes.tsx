@@ -44,7 +44,7 @@ export default function Clientes() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (data: { name: string; contact: string; email: string; phone: string; address?: string; cnpjCpf?: string }) => {
+    mutationFn: async (data: { name: string; contact: string; email: string | null; phone: string; address: string | null; cnpjCpf: string | null }) => {
       const res = await apiRequest("POST", "/api/clients", data);
       return await res.json();
     },
@@ -87,7 +87,7 @@ export default function Clientes() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (data: { id: string; name: string; contact: string; email: string; phone: string; address?: string; cnpjCpf?: string }) => {
+    mutationFn: async (data: { id: string; name: string; contact: string; email: string | null; phone: string; address: string | null; cnpjCpf: string | null }) => {
       const { id, ...updateData } = data;
       const res = await apiRequest("PATCH", `/api/clients/${id}`, updateData);
       return await res.json();
@@ -127,14 +127,19 @@ export default function Clientes() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    
+
+    const getOptional = (key: string) => {
+      const val = formData.get(key) as string;
+      return val === "" ? null : val;
+    };
+
     const data = {
       name: formData.get("name") as string,
       contact: formData.get("contact") as string,
-      email: formData.get("email") as string,
+      email: getOptional("email"),
       phone: formData.get("phone") as string,
-      address: formData.get("address") as string,
-      cnpjCpf: formData.get("cnpjCpf") as string,
+      address: getOptional("address"),
+      cnpjCpf: getOptional("cnpjCpf"),
     };
 
     if (editingClient) {
@@ -169,75 +174,75 @@ export default function Clientes() {
             <form onSubmit={handleSubmit} className="space-y-4" key={editingClient?.id || 'new'}>
               <div className="space-y-2">
                 <Label htmlFor="name">Nome/Razão Social</Label>
-                <Input 
-                  id="name" 
-                  name="name" 
-                  placeholder="Nome do cliente" 
-                  required 
+                <Input
+                  id="name"
+                  name="name"
+                  placeholder="Nome do cliente"
+                  required
                   data-testid="input-cliente-name"
                   defaultValue={editingClient?.name || ""}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="contact">Contato Principal</Label>
-                <Input 
-                  id="contact" 
-                  name="contact" 
-                  placeholder="Nome do contato" 
-                  required 
+                <Input
+                  id="contact"
+                  name="contact"
+                  placeholder="Nome do contato"
+                  required
                   data-testid="input-cliente-contact"
                   defaultValue={editingClient?.contact || ""}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">E-mail</Label>
-                <Input 
-                  id="email" 
-                  name="email" 
-                  type="email" 
-                  placeholder="email@exemplo.com" 
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  placeholder="email@exemplo.com"
                   data-testid="input-cliente-email"
                   defaultValue={editingClient?.email || ""}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="phone">Telefone</Label>
-                <Input 
-                  id="phone" 
-                  name="phone" 
-                  placeholder="(11) 99999-9999" 
-                  required 
+                <Input
+                  id="phone"
+                  name="phone"
+                  placeholder="(11) 99999-9999"
+                  required
                   data-testid="input-cliente-phone"
                   defaultValue={editingClient?.phone || ""}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="address">Endereço</Label>
-                <Input 
-                  id="address" 
-                  name="address" 
-                  placeholder="Rua, número, complemento, bairro, cidade" 
+                <Input
+                  id="address"
+                  name="address"
+                  placeholder="Rua, número, complemento, bairro, cidade"
                   data-testid="input-cliente-address"
                   defaultValue={editingClient?.address || ""}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="cnpjCpf">CNPJ/CPF</Label>
-                <Input 
-                  id="cnpjCpf" 
-                  name="cnpjCpf" 
-                  placeholder="00.000.000/0000-00 ou 000.000.000-00" 
+                <Input
+                  id="cnpjCpf"
+                  name="cnpjCpf"
+                  placeholder="00.000.000/0000-00 ou 000.000.000-00"
                   data-testid="input-cliente-cnpj-cpf"
                   defaultValue={editingClient?.cnpjCpf || ""}
                 />
               </div>
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={editingClient ? updateMutation.isPending : createMutation.isPending} 
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={editingClient ? updateMutation.isPending : createMutation.isPending}
                 data-testid="button-submit-cliente"
               >
-                {editingClient 
+                {editingClient
                   ? (updateMutation.isPending ? "Atualizando..." : "Atualizar Cliente")
                   : (createMutation.isPending ? "Cadastrando..." : "Cadastrar Cliente")
                 }
@@ -292,8 +297,8 @@ export default function Clientes() {
                   <span>{cliente.name}</span>
                 </CardTitle>
                 <div className="flex items-center gap-1">
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="icon"
                     onClick={() => handleEditClient(cliente)}
                     data-testid={`button-edit-cliente-${cliente.id}`}
@@ -302,8 +307,8 @@ export default function Clientes() {
                   </Button>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="icon"
                         data-testid={`button-delete-cliente-${cliente.id}`}
                         onClick={(e) => e.stopPropagation()}

@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+import { pool } from "./db";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
@@ -37,6 +38,21 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Ensure DB compatibility for legacy triggers/columns before registering routes
+  try {
+    await pool.query(`DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema = 'public' AND table_name = 'projects' AND column_name = 'updatedAt'
+      ) THEN
+        ALTER TABLE projects ADD COLUMN "updatedAt" timestamptz;
+      END IF;
+    END $$;`);
+  } catch (e) {
+    // If this fails, continue; route-level updates handle errors with details
+  }
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

@@ -12,7 +12,7 @@ import {
   SidebarHeader,
   SidebarFooter,
 } from "@/components/ui/sidebar";
-import logoPath from "@assets/Gemini_Generated_Image_ml7li0ml7li0ml7l_1760316295851.png";
+import logoPath from "@assets/image_1761404972727.png";
 
 const menuItems = [
   {
@@ -48,12 +48,12 @@ export function AppSidebar() {
   return (
     <Sidebar>
       <SidebarHeader className="p-6">
-        <div className="flex items-center gap-3">
-          <img src={logoPath} alt="HelpGlass" className="h-10 w-10" />
-          <div>
-            <h1 className="text-lg font-bold text-sidebar-foreground">HelpGlass</h1>
-            <p className="text-xs text-muted-foreground">Sistema de Gestão</p>
-          </div>
+        <div className="flex items-center">
+          <img
+            src={logoPath}
+            alt="HelpGlass"
+            className="block h-auto w-full max-h-12 md:max-h-16 object-contain"
+          />
         </div>
       </SidebarHeader>
       <SidebarContent>

@@ -7,9 +7,14 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowDownCircle, ArrowUpCircle, Upload, FileText, Trash2, Download } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Upload, FileText, Trash2, Download, FileDown, Calendar, Settings } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { RelatorioObraPDF, RelatorioObraPDFDownload } from "@/components/relatorio-obra-pdf";
+import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
 import type { UploadResult } from "@uppy/core";
 import type { ProjectFile, Transaction } from "@shared/schema";
 
@@ -29,6 +34,13 @@ type FileCategory = keyof typeof FILE_CATEGORIES;
 
 export function CartaoObras({ projectId, projectName, transactions }: CartaoObrasProps) {
   const [selectedCategory, setSelectedCategory] = useState<FileCategory>("nota_fiscal_recebida");
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [reportType, setReportType] = useState<'detailed' | 'summary'>('detailed');
+  const [reportPeriod, setReportPeriod] = useState({
+    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const { toast } = useToast();
 
   const receitas = transactions.filter(t => t.type === "receita");
@@ -135,10 +147,159 @@ export function CartaoObras({ projectId, projectName, transactions }: CartaoObra
 
   const filesByCategory = projectFiles.filter(f => f.category === selectedCategory);
 
+  // Filtrar transações pelo período do relatório
+  const filteredTransactions = transactions.filter(t => {
+    const transactionDate = new Date(t.date);
+    const startDate = new Date(reportPeriod.start);
+    const endDate = new Date(reportPeriod.end);
+    return transactionDate >= startDate && transactionDate <= endDate;
+  });
+
+  // Preparar dados do projeto para o relatório
+  const projectData = {
+    id: projectId,
+    name: projectName,
+    value: totalReceitas,
+    status: "Em Andamento",
+    client: "Cliente Exemplo",
+    address: "Endereço do Projeto",
+    startDate: reportPeriod.start,
+    endDate: reportPeriod.end,
+    responsible: "Responsável pelo Projeto"
+  };
+
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-lg">Cartão de Obras - {projectName}</CardTitle>
+        <div className="flex justify-between items-center">
+          <CardTitle className="text-lg">Cartão de Obras - {projectName}</CardTitle>
+          <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <FileDown className="h-4 w-4 mr-2" />
+                Gerar Relatório
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Configurar Relatório</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="report-type">Tipo de Relatório</Label>
+                  <Select value={reportType} onValueChange={(value) => setReportType(value as 'detailed' | 'summary')}>
+                    <SelectTrigger id="report-type">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="detailed">Detalhado (Completo)</SelectItem>
+                      <SelectItem value="summary">Resumido</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="start-date">Data Inicial</Label>
+                    <Input
+                      id="start-date"
+                      type="date"
+                      value={reportPeriod.start}
+                      onChange={(e) => setReportPeriod(prev => ({ ...prev, start: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="end-date">Data Final</Label>
+                    <Input
+                      id="end-date"
+                      type="date"
+                      value={reportPeriod.end}
+                      onChange={(e) => setReportPeriod(prev => ({ ...prev, end: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    className="flex-1"
+                    onClick={async () => {
+                      try {
+                        setIsGeneratingPDF(true);
+                        
+                        // Adicionar delay pequeno para garantir que o estado seja atualizado
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                        
+                        // Gerar PDF diretamente
+                        const blob = await pdf(
+                          <RelatorioObraPDF
+                            project={projectData}
+                            transactions={filteredTransactions}
+                            projectFiles={projectFiles}
+                            reportType={reportType}
+                            reportPeriod={reportPeriod}
+                          />
+                        ).toBlob();
+                        
+                        // Criar URL do blob e fazer download
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `relatorio-obra-${projectName.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+                        
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                        
+                        setTimeout(() => URL.revokeObjectURL(url), 100);
+                        
+                        toast({
+                          title: "Relatório gerado com sucesso!",
+                          description: "O download do relatório foi iniciado.",
+                        });
+                        
+                        setTimeout(() => setReportDialogOpen(false), 1000);
+                      } catch (error: any) {
+                        console.error('Erro completo ao gerar PDF:', error);
+                        
+                        let errorMessage = "Ocorreu um erro ao gerar o PDF.";
+                        if (error?.message?.includes('unitsPerEm')) {
+                          errorMessage = "Erro de fonte no PDF. Tente novamente.";
+                        } else if (error?.message?.includes('undefined') || error?.message?.includes('null')) {
+                          errorMessage = "Dados incompletos para gerar o PDF. Verifique se todos os dados estão carregados.";
+                        }
+                        
+                        toast({
+                          title: "Erro ao gerar relatório",
+                          description: errorMessage,
+                          variant: "destructive"
+                        });
+                      } finally {
+                        setIsGeneratingPDF(false);
+                      }
+                    }}
+                    disabled={isGeneratingPDF}
+                  >
+                    {isGeneratingPDF ? (
+                      <>
+                        <Settings className="h-4 w-4 mr-2 animate-spin" />
+                        Gerando...
+                      </>
+                    ) : (
+                      <>
+                        <FileDown className="h-4 w-4 mr-2" />
+                        Baixar Relatório
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => setReportDialogOpen(false)}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 md:grid-cols-2">

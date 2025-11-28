@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertClientSchema, insertProjectSchema, insertTransactionSchema, insertQuoteSchema, insertQuoteItemSchema, insertProjectFileSchema, insertBillSchema } from "@shared/schema";
+import { ZodError } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import path from "path";
 import fs from "fs";
@@ -98,7 +99,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       res.json(client);
     } catch (error) {
-      res.status(400).json({ error: "Failed to update client" });
+      console.error("Error updating client:", error);
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(400).json({ error: "Failed to update client", details: message });
     }
   });
 
@@ -144,7 +147,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/projects", async (req, res) => {
     try {
-      const validatedData = insertProjectSchema.parse(req.body);
+      // Allow creating administrative projects without client selection by assigning a default client
+      let incoming = { ...req.body } as any;
+      if (incoming?.type === "administrativo") {
+        try {
+          const clients = await storage.getClients();
+          let adminClient = clients.find(c => (c.name || "").toLowerCase() === "administrativo");
+          if (!adminClient) {
+            adminClient = await storage.createClient({
+              name: "Administrativo",
+              contact: "Interno",
+              phone: "0000000000",
+              email: null,
+              address: null,
+              cnpjCpf: null,
+            });
+          }
+          incoming.clientId = incoming.clientId || adminClient.id;
+          // Normalize type to a known enum value if DB uses enums
+          const existingProjects = await storage.getProjects();
+          const fallbackType = existingProjects[0]?.type || "vidro";
+          incoming.type = fallbackType;
+          // Mark description to identify administrative folder
+          incoming.description = `Pasta Administrativa${incoming.description ? ` - ${incoming.description}` : ''}`;
+          // Default value for administrative folders
+          if (!incoming.value) {
+            incoming.value = "0.00";
+          }
+        } catch (e) {
+          console.error("Failed to ensure administrative client", e);
+          // Fall back to error if we cannot ensure client for administrative project
+        }
+      }
+
+      const validatedData = insertProjectSchema.parse(incoming);
       const project = await storage.createProject(validatedData);
       
       // Sync bills automatically for projects with pending payment
@@ -212,7 +248,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/transactions", async (req, res) => {
     try {
-      const validatedData = insertTransactionSchema.parse(req.body);
+      // Log and normalize incoming payload for safer validation
+      const incoming = req.body as any;
+      console.log("POST /api/transactions incoming", incoming);
+
+      // Normalize value to a decimal string with dot separator and two decimals
+      let normalizedValue = incoming?.value;
+      if (typeof normalizedValue === "number") {
+        normalizedValue = normalizedValue.toFixed(2);
+      } else if (typeof normalizedValue === "string") {
+        const s = normalizedValue.replace(/,/g, ".").trim();
+        const n = Number(s);
+        if (!Number.isNaN(n)) {
+          normalizedValue = n.toFixed(2);
+        } else {
+          normalizedValue = s; // let zod complain with details
+        }
+      }
+
+      const body = { ...incoming, value: normalizedValue };
+      const validatedData = insertTransactionSchema.parse(body);
       const transaction = await storage.createTransaction(validatedData);
       
       // Sync bills when transaction changes project payment
@@ -223,8 +278,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       res.status(201).json(transaction);
     } catch (error) {
-      console.error("Transaction creation error:", error);
-      res.status(400).json({ error: "Invalid transaction data" });
+      console.error("Transaction creation error:", error, "payload:", req.body);
+      let details: any = undefined;
+      if (error instanceof ZodError) {
+        details = error.issues?.map(i => ({ path: i.path.join('.'), message: i.message }));
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      res.status(400).json({ error: "Invalid transaction data", details: details || message });
     }
   });
 
@@ -330,14 +390,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!status) {
         return res.status(400).json({ error: "Status is required" });
       }
-      const project = await storage.updateProject(req.params.id, { status });
+      const project = await storage.updateProjectStatus(req.params.id, status);
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
-      // Optionally sync bills if status affects billing (kept simple here)
       res.json(project);
-    } catch (error) {
-      res.status(400).json({ error: "Failed to update project status" });
+    } catch (error: any) {
+      // Provide useful diagnostics for debugging
+      const details = {
+        message: error?.message,
+        code: error?.code,
+      };
+      res.status(400).json({ error: "Failed to update project status", details });
     }
   });
 
@@ -665,9 +729,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/bills/:id", async (req, res) => {
     try {
+      const prev = await storage.getBill(req.params.id);
       const bill = await storage.updateBill(req.params.id, req.body);
       if (!bill) {
         return res.status(404).json({ error: "Bill not found" });
+      }
+      // Sync receipt with project when marking a receivable bill as paid
+      try {
+        const wasPaid = prev?.status === "pago";
+        const isPaidNow = bill.status === "pago";
+        if (!wasPaid && isPaidNow && bill.type === "receber" && bill.projectId) {
+          const paymentDate = new Date().toISOString().split('T')[0];
+          const tx = await storage.createTransaction({
+            projectId: bill.projectId,
+            type: "receita",
+            description: `Recebimento: ${bill.description}`,
+            value: String(bill.value),
+            date: paymentDate,
+          });
+          const project = await storage.getProject(tx.projectId);
+          if (project) {
+            await syncProjectBills(project);
+          }
+        } else if (!wasPaid && isPaidNow && bill.type === "pagar" && bill.projectId) {
+          const paymentDate = new Date().toISOString().split('T')[0];
+          await storage.createTransaction({
+            projectId: bill.projectId,
+            type: "despesa",
+            description: `Despesa: ${bill.description}`,
+            value: String(bill.value),
+            date: paymentDate,
+          });
+          const project = await storage.getProject(bill.projectId);
+          if (project) {
+            await syncProjectBills(project);
+          }
+        }
+      } catch (syncErr) {
+        console.error("Bill→Transaction sync error:", syncErr);
+        // Do not fail the request; syncing is best-effort
       }
       res.json(bill);
     } catch (error) {
@@ -681,6 +781,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete bill" });
+    }
+  });
+
+  app.post("/api/bills/:id/ensure-transaction", async (req, res) => {
+    try {
+      const bill = await storage.getBill(req.params.id);
+      if (!bill) return res.status(404).json({ error: "Bill not found" });
+      if (bill.status !== "pago") return res.status(400).json({ error: "Bill is not marked as paid" });
+      if (!bill.projectId) return res.status(400).json({ error: "Bill has no associated project" });
+
+      const targetType = bill.type === "receber" ? "receita" : "despesa";
+      const expectedDescPrefix = bill.type === "receber" ? "Recebimento: " : "Despesa: ";
+      const expectedDesc = `${expectedDescPrefix}${bill.description}`;
+
+      const txs = await storage.getTransactionsByProject(bill.projectId);
+      const existing = txs.find(t => t.type === targetType && t.description === expectedDesc && String(t.value) === String(bill.value));
+      if (existing) {
+        return res.json(existing);
+      }
+
+      const paymentDate = new Date().toISOString().split('T')[0];
+      const tx = await storage.createTransaction({
+        projectId: bill.projectId,
+        type: targetType,
+        description: expectedDesc,
+        value: String(bill.value),
+        date: paymentDate,
+      });
+      const project = await storage.getProject(tx.projectId);
+      if (project) {
+        await syncProjectBills(project);
+      }
+      return res.status(201).json(tx);
+    } catch (error) {
+      console.error("ensure-transaction error", error);
+      res.status(500).json({ error: "Failed to ensure transaction for bill" });
     }
   });
 

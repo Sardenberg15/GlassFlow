@@ -143,6 +143,40 @@ export class DatabaseStorage implements IStorage {
     return project || undefined;
   }
 
+  // Dedicated status update using explicit SQL to avoid ORM edge cases
+  async updateProjectStatus(id: string, status: string): Promise<Project | undefined> {
+    // Ensure legacy column "updatedAt" exists for deployments that rely on triggers
+    await pool.query('alter table projects add column if not exists "updatedAt" timestamptz');
+    const r = await pool.query<{
+      id: string;
+      name: string;
+      clientId: string;
+      description: string | null;
+      value: string;
+      type: string;
+      status: string;
+      date: string;
+      createdAt: Date;
+    }>(
+      `update projects
+         set status = $2,
+             "updatedAt" = now()
+       where id = $1
+       returning 
+         id,
+         name,
+         client_id as "clientId",
+         description,
+         value::text as value,
+         type,
+         status,
+         date,
+         created_at as "createdAt"`
+      , [id, status]
+    );
+    return r.rows[0] as unknown as Project | undefined;
+  }
+
   async deleteProject(id: string): Promise<void> {
     await db.delete(projects).where(eq(projects.id, id));
   }
@@ -228,8 +262,36 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createTransaction(insertTransaction: InsertTransaction): Promise<Transaction> {
-    const [transaction] = await db.insert(transactions).values(insertTransaction).returning();
-    return transaction;
+    // Use explicit SQL to avoid referencing non-existent optional columns (e.g., receipt_path)
+    const r = await pool.query<{
+      id: string;
+      projectId: string;
+      type: string;
+      description: string;
+      value: string;
+      date: string;
+      createdAt: Date;
+    }>(
+      `insert into transactions (project_id, type, description, value, date)
+       values ($1, $2, $3, $4::numeric, $5)
+       returning 
+         id,
+         project_id as "projectId",
+         type,
+         description,
+         value::text as value,
+         date,
+         NULL::text as "receiptPath",
+         created_at as "createdAt"`,
+      [
+        insertTransaction.projectId,
+        insertTransaction.type,
+        insertTransaction.description,
+        String(insertTransaction.value),
+        insertTransaction.date,
+      ]
+    );
+    return r.rows[0] as unknown as Transaction;
   }
 
   async updateTransaction(id: string, updateData: Partial<InsertTransaction>): Promise<Transaction | undefined> {
@@ -443,6 +505,13 @@ class MemoryStorage implements IStorage {
     const idx = this.projects.findIndex(p => p.id === id);
     if (idx === -1) return undefined;
     this.projects[idx] = { ...this.projects[idx], ...project } as Project;
+    return this.projects[idx];
+  }
+
+  async updateProjectStatus(id: string, status: string): Promise<Project | undefined> {
+    const idx = this.projects.findIndex(p => p.id === id);
+    if (idx === -1) return undefined;
+    this.projects[idx] = { ...this.projects[idx], status } as Project;
     return this.projects[idx];
   }
   async deleteProject(id: string): Promise<void> {

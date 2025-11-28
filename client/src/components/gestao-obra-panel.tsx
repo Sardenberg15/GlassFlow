@@ -1,14 +1,16 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, AlertCircle, Clock, TrendingUp, FileText } from "lucide-react";
-import type { Transaction } from "@shared/schema";
-import { PDFDownloadLink } from "@react-pdf/renderer";
-import { GestaoObraPDF } from "@/components/gestao-obra-pdf";
+import { CheckCircle2, AlertCircle, Clock, TrendingUp, FileText, Settings } from "lucide-react";
+import type { Transaction, ProjectFile } from "@shared/schema";
+import { PDFDownloadLink, pdf } from "@react-pdf/renderer";
+import { RelatorioObraPDF } from "@/components/relatorio-obra-pdf";
+import { useToast } from "@/hooks/use-toast";
 
 type ProjectBasics = {
   id: string;
@@ -22,6 +24,7 @@ interface GestaoObraPanelProps {
   project: ProjectBasics;
   onAddReceita?: () => void;
   onAddDespesa?: () => void;
+  projectFiles?: ProjectFile[];
 }
 
 const formatCurrency = (value: number | string) => {
@@ -29,7 +32,23 @@ const formatCurrency = (value: number | string) => {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(numValue || 0);
 };
 
-export function GestaoObraPanel({ project, onAddReceita, onAddDespesa }: GestaoObraPanelProps) {
+export function GestaoObraPanel({ project, onAddReceita, onAddDespesa, projectFiles = [] }: GestaoObraPanelProps) {
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const { toast } = useToast();
+  
+  // Buscar arquivos do projeto se não foram fornecidos
+  const { data: fetchedProjectFiles = [] } = useQuery<ProjectFile[]>({
+    queryKey: ["/api/projects", project.id, "files"],
+    queryFn: async () => {
+      const response = await fetch(`/api/projects/${project.id}/files`);
+      if (!response.ok) throw new Error("Failed to fetch files");
+      return response.json();
+    },
+    enabled: projectFiles.length === 0, // Só busca se não houver arquivos fornecidos
+  });
+
+  const finalProjectFiles = projectFiles.length > 0 ? projectFiles : fetchedProjectFiles;
+
   const { receitas, despesas, totalReceitas, totalDespesas, valorTotalContratado, aReceber, percentualRecebido, lucro, margem } = useMemo(() => {
     const receitas = project.transactions.filter(t => t.type === "receita");
     const despesas = project.transactions.filter(t => t.type === "despesa");
@@ -63,17 +82,87 @@ export function GestaoObraPanel({ project, onAddReceita, onAddDespesa }: GestaoO
   return (
     <div className="space-y-6">
       {/* Botão de relatório PDF */}
-      <div className="flex items-center justify-end">
-        <PDFDownloadLink
-          document={<GestaoObraPDF project={project} />}
-          fileName={`Relatorio_${String(project.name || '').replace(/\s+/g, '_')}.pdf`}
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-2"
+          onClick={async () => {
+            try {
+              setIsGeneratingPDF(true);
+              
+              // Adicionar delay pequeno para garantir que o estado seja atualizado
+              await new Promise(resolve => setTimeout(resolve, 100));
+              
+              const blob = await pdf(
+                <RelatorioObraPDF
+                  project={{
+                    id: project.id,
+                    name: project.name,
+                    value: project.value,
+                    status: project.status,
+                    client: "Cliente do Projeto",
+                    address: "Endereço do Projeto",
+                    responsible: "Responsável Técnico"
+                  }}
+                  transactions={project.transactions}
+                  projectFiles={finalProjectFiles}
+                  reportType="detailed"
+                  reportPeriod={{
+                    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+                    end: new Date().toISOString().split('T')[0]
+                  }}
+                />
+              ).toBlob();
+              
+              const url = URL.createObjectURL(blob);
+              const link = document.createElement('a');
+              link.href = url;
+              link.download = `relatorio-obra-${(project.name || 'projeto').toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+              
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+              
+              setTimeout(() => URL.revokeObjectURL(url), 100);
+              
+              toast({
+                title: "Relatório gerado com sucesso!",
+                description: "O download do relatório foi iniciado.",
+              });
+            } catch (error: any) {
+              console.error('Erro completo ao gerar PDF:', error);
+              
+              let errorMessage = "Ocorreu um erro ao gerar o PDF.";
+              if (error?.message?.includes('unitsPerEm')) {
+                errorMessage = "Erro de fonte no PDF. Tente novamente.";
+              } else if (error?.message?.includes('undefined') || error?.message?.includes('null')) {
+                errorMessage = "Dados incompletos para gerar o PDF. Verifique se todos os dados estão carregados.";
+              }
+              
+              toast({
+                title: "Erro ao gerar relatório",
+                description: errorMessage,
+                variant: "destructive"
+              });
+            } finally {
+              setIsGeneratingPDF(false);
+            }
+          }}
+          disabled={isGeneratingPDF}
         >
-          {({ loading }) => (
-            <Button size="sm" variant="outline" className="gap-2">
-              <FileText className="h-4 w-4" /> {loading ? "Gerando..." : "Gerar Relatório PDF"}
-            </Button>
+          {isGeneratingPDF ? (
+            <>
+              <Settings className="h-4 w-4 mr-2 animate-spin" />
+              Gerando...
+            </>
+          ) : (
+            <>
+              <FileText className="h-4 w-4 mr-2" />
+              Gerar Relatório PDF
+            </>
           )}
-        </PDFDownloadLink>
+        </Button>
       </div>
       {/* Top Summary */}
       <div className="grid gap-4 md:grid-cols-2">

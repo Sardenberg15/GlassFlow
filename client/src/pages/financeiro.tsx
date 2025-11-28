@@ -1,1096 +1,927 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { MetricCard } from "@/components/metric-card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { DollarSign, TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, Plus, Filter, Trash2, Calendar, Pencil, CheckCircle2, FileText } from "lucide-react";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, Line, LineChart, Pie, PieChart, Cell } from "recharts";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { useToast } from "@/hooks/use-toast";
-import { useState, useMemo } from "react";
-import type { Transaction, Project, Bill } from "@shared/schema";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { CheckCircle2, AlertCircle, Clock, DollarSign, FileText, Plus, Calendar as CalendarIcon, Trash2, Upload, Eye, Paperclip } from "lucide-react";
+import type { Bill, Transaction, Project } from "@shared/schema";
+import { Link } from "wouter";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useToast } from "@/hooks/use-toast";
 
-interface DashboardStats {
-  activeProjects: number;
-  totalClients: number;
-  receitas: number;
-  despesas: number;
-  lucro: number;
-  margem: number;
-}
+const formatCurrency = (value: number | string) => {
+  const numValue = typeof value === "string" ? parseFloat(value) : value;
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(numValue || 0);
+};
 
-type PeriodFilter = "1month" | "3months" | "6months" | "1year" | "all";
+const statusBadge = (status: string) => {
+  if (status === "pago") return <Badge className="text-xs bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-400">Pago</Badge>;
+  if (status === "atrasado") return <Badge variant="destructive" className="text-xs">Atrasado</Badge>;
+  return <Badge className="text-xs bg-orange-100 dark:bg-orange-950 text-orange-700 dark:text-orange-400">Pendente</Badge>;
+};
 
 export default function Financeiro() {
   const { toast } = useToast();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("6months");
-  const [typeFilter, setTypeFilter] = useState<"all" | "receita" | "despesa">("all");
-  
-  // Edit state
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const [editingBill, setEditingBill] = useState<Bill | null>(null);
-  
-  // Form state for transaction creation/editing
-  const [formType, setFormType] = useState<string>("");
-  const [formProjectId, setFormProjectId] = useState<string>("");
-  const [formDescription, setFormDescription] = useState<string>("");
-  const [formValue, setFormValue] = useState<string>("");
-  const [formDate, setFormDate] = useState<string>("");
-  
-  // Bill dialog state
-  const [isBillDialogOpen, setIsBillDialogOpen] = useState(false);
-  
-  // Form state for bill creation/editing
-  const [billFormType, setBillFormType] = useState<string>("");
-  const [billFormProjectId, setBillFormProjectId] = useState<string>("");
-  const [billFormDescription, setBillFormDescription] = useState<string>("");
-  const [billFormValue, setBillFormValue] = useState<string>("");
-  const [billFormDate, setBillFormDate] = useState<string>("");
-  const [billFormDueDate, setBillFormDueDate] = useState<string>("");
-  const [billFormStatus, setBillFormStatus] = useState<string>("pendente");
+  const [tab, setTab] = useState("saldo");
+  const [openNewBill, setOpenNewBill] = useState(false);
+  const [newBillType, setNewBillType] = useState<"pagar" | "receber">("pagar");
+  const [newBillProjectId, setNewBillProjectId] = useState<string>("none");
+  const [monthFilter, setMonthFilter] = useState<string>("");
+  const [preset, setPreset] = useState<"todos" | "este" | "ultimo">("todos");
+  const [openMonthPicker, setOpenMonthPicker] = useState(false);
+  const [attachingTransaction, setAttachingTransaction] = useState<Transaction | null>(null);
+  const [openAttachFile, setOpenAttachFile] = useState(false);
+  const [viewingTransaction, setViewingTransaction] = useState<Transaction | null>(null);
+  const [openViewFiles, setOpenViewFiles] = useState(false);
 
-  const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
-    queryKey: ["/api/dashboard/stats"],
+  const ym = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    return `${y}-${m}`;
+  };
+  const monthLabel = (ymStr: string) => {
+    if (!ymStr) return "Todos";
+    const [y, m] = ymStr.split("-");
+    const date = new Date(Number(y), Number(m) - 1, 1);
+    return new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(date);
+  };
+
+  const { data: bills = [], isLoading: loadingBills } = useQuery<Bill[]>({
+    queryKey: ["/api/bills"],
   });
 
-  const { data: transactions = [], isLoading: transactionsLoading } = useQuery<Transaction[]>({
+  const { data: transactions = [], isLoading: loadingTransactions } = useQuery<Transaction[]>({
     queryKey: ["/api/transactions"],
+  });
+
+  const { data: transactionFiles = [] } = useQuery<any[]>({
+    queryKey: ["/api/transactions/files"],
   });
 
   const { data: projects = [] } = useQuery<Project[]>({
     queryKey: ["/api/projects"],
   });
 
-  const { data: bills = [], isLoading: billsLoading } = useQuery<Bill[]>({
-    queryKey: ["/api/bills"],
-  });
-
-  const updateTransactionMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => {
-      console.log("Financeiro PATCH /api/transactions", { id, data });
-      return apiRequest("PATCH", `/api/transactions/${id}`, data);
+  const markPaidMutation = useMutation({
+    mutationFn: async (billId: string) => {
+      await apiRequest("PATCH", `/api/bills/${billId}`, { status: "pago" });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/bills"] }); // Atualiza contas a receber automáticas
-      toast({
-        title: "Transação atualizada",
-        description: "A transação foi atualizada com sucesso.",
-      });
-    },
-    onError: (error: any) => {
-      const message = error?.message || "Não foi possível atualizar a transação.";
-      console.error("Financeiro updateTransaction error:", error);
-      toast({
-        title: "Erro",
-        description: message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const deleteTransactionMutation = useMutation({
-    mutationFn: (id: string) => apiRequest("DELETE", `/api/transactions/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/bills"] }); // Atualiza contas a receber automáticas
-      toast({
-        title: "Transação excluída",
-        description: "A transação foi removida com sucesso.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir a transação.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const updateBillMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => 
-      apiRequest("PATCH", `/api/bills/${id}`, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
-      toast({
-        title: "Conta atualizada",
-        description: "A conta foi atualizada com sucesso.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Não foi possível atualizar a conta.",
-        variant: "destructive",
-      });
     },
   });
 
   const deleteBillMutation = useMutation({
-    mutationFn: (id: string) => apiRequest("DELETE", `/api/bills/${id}`),
+    mutationFn: async (billId: string) => {
+      await apiRequest("DELETE", `/api/bills/${billId}`);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
-      toast({
-        title: "Conta excluída",
-        description: "A conta foi removida com sucesso.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Erro",
-        description: "Não foi possível excluir a conta.",
-        variant: "destructive",
-      });
     },
   });
 
-  const formatCurrency = (value: number) => 
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+  // File upload functionality
+  const handleGetUploadParameters = async () => {
+    const response = await apiRequest("POST", "/api/objects/upload", {});
+    const data = await response.json();
+    return {
+      method: "PUT" as const,
+      url: data.uploadURL,
+      fields: data.fields || {}
+    };
+  };
 
-  // Filter transactions by period
-  const filteredTransactions = useMemo(() => {
-    const now = new Date();
-    const cutoffDate = new Date();
-    
-    switch (periodFilter) {
-      case "1month":
-        cutoffDate.setMonth(now.getMonth() - 1);
-        break;
-      case "3months":
-        cutoffDate.setMonth(now.getMonth() - 3);
-        break;
-      case "6months":
-        cutoffDate.setMonth(now.getMonth() - 6);
-        break;
-      case "1year":
-        cutoffDate.setFullYear(now.getFullYear() - 1);
-        break;
-      case "all":
-      default:
-        cutoffDate.setFullYear(2000);
+  const handleAttachFileMutation = useMutation({
+    mutationFn: async (fileData: { transactionId: string; fileName: string; fileType: string; fileSize: number; objectPath: string }) => {
+      await apiRequest("POST", "/api/transactions/files", fileData);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions/files"] });
+      toast({ title: "Arquivo anexado com sucesso!" });
+      setOpenAttachFile(false);
+      setAttachingTransaction(null);
+    },
+  });
+
+  const handleUploadComplete = (result: any) => {
+    if (result.successful && result.successful.length > 0) {
+      const file = result.successful[0];
+      if (file.name && file.uploadURL && attachingTransaction) {
+        handleAttachFileMutation.mutate({
+          transactionId: attachingTransaction.id,
+          fileName: file.name,
+          fileType: file.type || "application/octet-stream",
+          fileSize: file.size,
+          objectPath: file.uploadURL
+        });
+      }
     }
+  };
 
-    return transactions
-      .filter(t => new Date(t.date) >= cutoffDate)
-      .filter(t => typeFilter === "all" || t.type === typeFilter)
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [transactions, periodFilter, typeFilter]);
+  const getTransactionFiles = (transactionId: string) => {
+    return transactionFiles.filter((file: any) => file.transactionId === transactionId);
+  };
 
-  // Aggregate data by month
-  const monthlyData = useMemo(() => {
-    const monthMap = new Map<string, { receita: number; despesa: number }>();
-    
-    filteredTransactions.forEach(t => {
-      const date = new Date(t.date);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      
-      if (!monthMap.has(monthKey)) {
-        monthMap.set(monthKey, { receita: 0, despesa: 0 });
-      }
-      
-      const data = monthMap.get(monthKey)!;
-      if (t.type === "receita") {
-        data.receita += parseFloat(t.value);
-      } else {
-        data.despesa += parseFloat(t.value);
-      }
+  
+
+  
+
+  const billsComputed = useMemo(() => {
+    const today = new Date().toISOString().split("T")[0];
+    return bills.map((b) => {
+      let st = b.status;
+      if (st !== "pago" && b.dueDate < today) st = "atrasado";
+      return { ...b, status: st } as Bill;
     });
+  }, [bills]);
 
-    return Array.from(monthMap.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .slice(-6)
-      .map(([month, data]) => {
-        const [year, monthNum] = month.split('-');
-        const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-        return {
-          month: monthNames[parseInt(monthNum) - 1],
-          receita: data.receita,
-          despesa: data.despesa,
-        };
-      });
-  }, [filteredTransactions]);
-
-  // Aggregate revenue by project type
-  const categoryData = useMemo(() => {
-    const typeMap = new Map<string, number>();
-    
-    filteredTransactions
-      .filter(t => t.type === "receita")
-      .forEach(t => {
-        const project = projects.find(p => p.id === t.projectId);
-        const type = project?.type || "outros";
-        typeMap.set(type, (typeMap.get(type) || 0) + parseFloat(t.value));
-      });
-
-    const colors = [
-      "hsl(var(--chart-1))",
-      "hsl(var(--chart-2))",
-      "hsl(var(--chart-3))",
-      "hsl(var(--chart-4))",
-    ];
-
-    return Array.from(typeMap.entries()).map(([name, value], index) => ({
-      name: name.charAt(0).toUpperCase() + name.slice(1),
-      value,
-      color: colors[index % colors.length],
-    }));
-  }, [filteredTransactions, projects]);
-
-  const totalReceitas = stats?.receitas || 0;
-  const totalDespesas = stats?.despesas || 0;
-  const lucro = stats?.lucro || 0;
-  const margemLucro = stats?.margem || 0;
-
-  const resetForm = () => {
-    setFormType("");
-    setFormProjectId("");
-    setFormDescription("");
-    setFormValue("");
-    setFormDate("");
-    setEditingTransaction(null);
+  const getProjectName = (projectId: string | null) => {
+    if (!projectId) return "Sem projeto";
+    const p = projects.find((x) => x.id === projectId);
+    return p?.name || "Projeto desconhecido";
   };
 
-  const handleEditTransaction = (transaction: Transaction) => {
-    setEditingTransaction(transaction);
-    setFormType(transaction.type);
-    setFormProjectId(transaction.projectId);
-    setFormDescription(transaction.description);
-    setFormValue(transaction.value);
-    setFormDate(transaction.date.split('T')[0]);
-    setIsDialogOpen(true);
-  };
+  const concludedProjectIds = useMemo(() => {
+    return new Set(
+      projects
+        .filter(p => p.status === "finalizado" || p.status === "concluido")
+        .map(p => p.id)
+    );
+  }, [projects]);
 
-  const resetBillForm = () => {
-    setBillFormType("");
-    setBillFormProjectId("");
-    setBillFormDescription("");
-    setBillFormValue("");
-    setBillFormDate("");
-    setBillFormDueDate("");
-    setBillFormStatus("pendente");
-    setEditingBill(null);
-  };
+  const baseTransactions = useMemo(() => {
+    return transactions.filter(t => !t.projectId || concludedProjectIds.has(t.projectId));
+  }, [transactions, concludedProjectIds]);
 
-  const handleEditBill = (bill: Bill) => {
-    setEditingBill(bill);
-    setBillFormType(bill.type);
-    setBillFormProjectId(bill.projectId || "");
-    setBillFormDescription(bill.description);
-    setBillFormValue(bill.value);
-    setBillFormDate(bill.date.split('T')[0]);
-    setBillFormDueDate(bill.dueDate.split('T')[0]);
-    setBillFormStatus(bill.status);
-    setIsBillDialogOpen(true);
-  };
+  const summaryTransactions = useMemo(() => {
+    if (!monthFilter) return baseTransactions;
+    return baseTransactions.filter(t => (t.date || "").startsWith(monthFilter));
+  }, [baseTransactions, monthFilter]);
 
-  const handleSubmitTransaction = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
-    if (!formType || !formProjectId || !formDescription || !formValue || !formDate) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha todos os campos.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      if (editingTransaction) {
-        // Update existing transaction
-        await updateTransactionMutation.mutateAsync({
-          id: editingTransaction.id,
-          data: {
-            projectId: formProjectId,
-            type: formType,
-            description: formDescription,
-            value: formValue,
-            date: formDate,
-          }
-        });
-      } else {
-        // Create new transaction
-        await apiRequest("POST", "/api/transactions", {
-          projectId: formProjectId,
-          type: formType,
-          description: formDescription,
-          value: formValue,
-          date: formDate,
-        });
+  const summaryBillsBase = useMemo(() => {
+    return billsComputed.filter(b => !b.projectId || concludedProjectIds.has(b.projectId));
+  }, [billsComputed, concludedProjectIds]);
 
-        queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/bills"] }); // Atualiza contas a receber automáticas
-        
-        toast({
-          title: "Transação criada",
-          description: "A transação foi adicionada com sucesso.",
-        });
-      }
-      
-      setIsDialogOpen(false);
-      resetForm();
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: editingTransaction ? "Não foi possível atualizar a transação." : "Não foi possível criar a transação.",
-        variant: "destructive",
-      });
-    }
-  };
+  const summaryBills = useMemo(() => {
+    if (!monthFilter) return summaryBillsBase;
+    return summaryBillsBase.filter(b => (b.dueDate || "").startsWith(monthFilter));
+  }, [summaryBillsBase, monthFilter]);
 
-  const handleSubmitBill = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    
-    if (!billFormType || !billFormDescription || !billFormValue || !billFormDate || !billFormDueDate) {
-      toast({
-        title: "Erro",
-        description: "Por favor, preencha todos os campos obrigatórios.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      if (editingBill) {
-        await updateBillMutation.mutateAsync({
-          id: editingBill.id,
-          data: {
-            projectId: billFormProjectId || null,
-            type: billFormType,
-            description: billFormDescription,
-            value: billFormValue,
-            date: billFormDate,
-            dueDate: billFormDueDate,
-            status: billFormStatus,
-          }
-        });
-      } else {
-        await apiRequest("POST", "/api/bills", {
-          projectId: billFormProjectId || null,
-          type: billFormType,
-          description: billFormDescription,
-          value: billFormValue,
-          date: billFormDate,
-          dueDate: billFormDueDate,
-          status: billFormStatus,
-        });
+  const totalReceitas = useMemo(() => summaryTransactions.filter(t => t.type === "receita").reduce((s, t) => s + parseFloat(String(t.value)), 0), [summaryTransactions]);
+  const totalDespesasTransacoes = useMemo(() => summaryTransactions.filter(t => t.type === "despesa").reduce((s, t) => s + parseFloat(String(t.value)), 0), [summaryTransactions]);
+  const totalDespesasBills = useMemo(() => summaryBills.filter(b => b.type === "pagar").reduce((s, b) => s + parseFloat(String(b.value)), 0), [summaryBills]);
+  const totalDespesas = totalDespesasTransacoes + totalDespesasBills;
+  const lucro = totalReceitas - totalDespesas;
 
-        queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
-        
-        toast({
-          title: "Conta criada",
-          description: "A conta foi adicionada com sucesso.",
-        });
-      }
-      
-      setIsBillDialogOpen(false);
-      resetBillForm();
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: editingBill ? "Não foi possível atualizar a conta." : "Não foi possível criar a conta.",
-        variant: "destructive",
-      });
-    }
-  };
+  const filteredTransactions = useMemo(() => {
+    const list = baseTransactions;
+    if (!monthFilter) return list;
+    return list.filter(t => (t.date || "").startsWith(monthFilter));
+  }, [baseTransactions, monthFilter]);
 
-  const handleMarkAsPaid = async (bill: Bill) => {
-    try {
-      // Se for conta a receber vinculada a projeto, criar receita automaticamente
-      if (bill.type === "receber" && bill.projectId) {
-        await apiRequest("POST", "/api/transactions", {
-          projectId: bill.projectId,
-          type: "receita",
-          description: bill.description,
-          value: bill.value,
-          date: new Date().toISOString().split('T')[0],
-        });
-        
-        queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/dashboard/stats"] });
-        queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
-      }
-      
-      // Marcar conta como paga
-      await updateBillMutation.mutateAsync({
-        id: bill.id,
-        data: {
-          status: "pago",
-        }
-      });
-      
-      toast({
-        title: bill.type === "receber" ? "Receita lançada!" : "Conta paga!",
-        description: bill.type === "receber" && bill.projectId 
-          ? "A conta foi marcada como paga e a receita foi lançada no projeto."
-          : "A conta foi marcada como paga.",
-      });
-    } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Não foi possível marcar como pago.",
-        variant: "destructive",
-      });
-    }
-  };
+  const filteredBills = useMemo(() => {
+    const list = billsComputed.filter(b => !b.projectId || concludedProjectIds.has(b.projectId));
+    if (!monthFilter) return list;
+    return list.filter(b => (b.dueDate || "").startsWith(monthFilter));
+  }, [billsComputed, monthFilter, concludedProjectIds]);
+
+  const saldoPorProjeto = useMemo(() => {
+    const projetosConcluidos = projects.filter(p => p.status === "finalizado" || p.status === "concluido");
+    return projetosConcluidos.map(p => {
+      const receitasProj = transactions
+        .filter(t => t.projectId === p.id && t.type === "receita")
+        .reduce((s, t) => s + parseFloat(String(t.value)), 0);
+      const valorContrato = parseFloat(String(p.value));
+      const aReceber = Math.max(0, valorContrato - receitasProj);
+      const percentual = valorContrato > 0 ? Math.min(100, (receitasProj / valorContrato) * 100) : 0;
+      let status: "pago" | "pendente" | "atrasado" = "pendente";
+      if (percentual >= 100) status = "pago";
+      else if ((p.status === "finalizado" || p.status === "concluido") && aReceber > 0 && new Date(p.date) < new Date()) status = "atrasado";
+      return { projeto: p, valorContrato, recebido: receitasProj, aReceber, percentual, status };
+    }).sort((a, b) => b.aReceber - a.aReceber);
+  }, [projects, transactions]);
+
+  const createBillMutation = useMutation({
+    mutationFn: async (payload: Partial<Bill>) => {
+      const today = new Date().toISOString().split("T")[0];
+      const body = {
+        type: payload.type || newBillType,
+        description: payload.description || "",
+        value: payload.value,
+        dueDate: payload.dueDate,
+        status: payload.status || "pendente",
+        projectId: payload.projectId || null,
+        date: payload.date || today,
+      };
+      await apiRequest("POST", "/api/bills", body);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/bills"] });
+      setOpenNewBill(false);
+    },
+  });
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Financeiro</h1>
-          <p className="text-muted-foreground">Visão geral das finanças da empresa</p>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><DollarSign className="h-6 w-6" /> Financeiro</h1>
+          <p className="text-sm text-muted-foreground">Acompanhe transações e contas a pagar/receber</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) resetForm();
-        }}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-create-transaction">
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Transação
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingTransaction ? "Editar Transação" : "Nova Transação"}</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmitTransaction} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="type">Tipo</Label>
-                <Select value={formType} onValueChange={setFormType} required>
-                  <SelectTrigger id="type" data-testid="select-transaction-type">
-                    <SelectValue placeholder="Selecione o tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="receita">Receita</SelectItem>
-                    <SelectItem value="despesa">Despesa</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="projectId">Projeto</Label>
-                <Select value={formProjectId} onValueChange={setFormProjectId} required>
-                  <SelectTrigger id="projectId" data-testid="select-transaction-project">
-                    <SelectValue placeholder="Selecione o projeto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {projects.map(project => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição</Label>
-                <Input
-                  id="description"
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder="Descrição da transação"
-                  data-testid="input-transaction-description"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="value">Valor</Label>
-                <Input
-                  id="value"
-                  value={formValue}
-                  onChange={(e) => setFormValue(e.target.value)}
-                  type="number"
-                  step="0.01"
-                  placeholder="0.00"
-                  data-testid="input-transaction-value"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="date">Data</Label>
-                <Input
-                  id="date"
-                  value={formDate}
-                  onChange={(e) => setFormDate(e.target.value)}
-                  type="date"
-                  data-testid="input-transaction-date"
-                  required
-                />
-              </div>
-              <Button type="submit" className="w-full" data-testid="button-submit-transaction">
-                {editingTransaction ? "Atualizar Transação" : "Criar Transação"}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
       </div>
 
-      {/* Metrics Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statsLoading ? (
-          <>
-            {[...Array(4)].map((_, i) => (
-              <Card key={i} data-testid={`skeleton-metric-${i}`}>
-                <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-8 rounded-full" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-8 w-32" />
-                </CardContent>
-              </Card>
-            ))}
-          </>
-        ) : (
-          <>
-            <MetricCard
-              title="Receitas Totais"
-              value={formatCurrency(totalReceitas)}
-              icon={ArrowUpCircle}
-              iconColor="bg-chart-2"
-              data-testid="metric-total-revenue"
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Resumo</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="p-4 border rounded">
+            <div className="text-sm text-muted-foreground">Receitas</div>
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">{formatCurrency(totalReceitas)}</div>
+          </div>
+          <div className="p-4 border rounded">
+            <div className="text-sm text-muted-foreground">Despesas</div>
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{formatCurrency(totalDespesas)}</div>
+          </div>
+          <div className="p-4 border rounded">
+            <div className="text-sm text-muted-foreground">Lucro</div>
+            <div className="text-2xl font-bold">{formatCurrency(lucro)}</div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <ToggleGroup type="single" value={preset} onValueChange={(v) => {
+          if (!v) return;
+          setPreset(v as any);
+          if (v === "todos") setMonthFilter("");
+          if (v === "este") setMonthFilter(ym(new Date()));
+          if (v === "ultimo") {
+            const d = new Date();
+            d.setMonth(d.getMonth() - 1);
+            setMonthFilter(ym(d));
+          }
+        }}>
+          <ToggleGroupItem value="todos">Todos</ToggleGroupItem>
+          <ToggleGroupItem value="este">Este mês</ToggleGroupItem>
+          <ToggleGroupItem value="ultimo">Último mês</ToggleGroupItem>
+        </ToggleGroup>
+        <Popover open={openMonthPicker} onOpenChange={setOpenMonthPicker}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="gap-2">
+              <CalendarIcon className="h-4 w-4" /> {monthLabel(monthFilter)}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={monthFilter ? new Date(Number(monthFilter.split("-")[0]), Number(monthFilter.split("-")[1]) - 1, 1) : undefined}
+              onSelect={(date) => {
+                if (date) {
+                  const v = ym(date);
+                  setMonthFilter(v);
+                  setPreset("todos");
+                  setOpenMonthPicker(false);
+                }
+              }}
+              captionLayout="dropdown"
+              fromYear={2020}
+              toYear={new Date().getFullYear() + 1}
             />
-            <MetricCard
-              title="Despesas Totais"
-              value={formatCurrency(totalDespesas)}
-              icon={ArrowDownCircle}
-              iconColor="bg-chart-4"
-              data-testid="metric-total-expenses"
-            />
-            <MetricCard
-              title="Lucro Líquido"
-              value={formatCurrency(lucro)}
-              icon={Wallet}
-              iconColor="bg-primary"
-              data-testid="metric-net-profit"
-            />
-            <MetricCard
-              title="Margem de Lucro"
-              value={`${margemLucro}%`}
-              icon={TrendingUp}
-              iconColor="bg-chart-3"
-              data-testid="metric-profit-margin"
-            />
-          </>
+          </PopoverContent>
+        </Popover>
+        {monthFilter && (
+          <Badge variant="secondary">Filtro: {monthLabel(monthFilter)}</Badge>
         )}
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Filter className="h-5 w-5" />
-              Filtros
-            </CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 flex-wrap">
-            <div className="flex-1 min-w-[200px]">
-              <Label htmlFor="period-filter">Período</Label>
-              <Select value={periodFilter} onValueChange={(value) => setPeriodFilter(value as PeriodFilter)}>
-                <SelectTrigger id="period-filter" data-testid="select-period-filter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1month">Último mês</SelectItem>
-                  <SelectItem value="3months">Últimos 3 meses</SelectItem>
-                  <SelectItem value="6months">Últimos 6 meses</SelectItem>
-                  <SelectItem value="1year">Último ano</SelectItem>
-                  <SelectItem value="all">Todo o período</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex-1 min-w-[200px]">
-              <Label htmlFor="type-filter">Tipo</Label>
-              <Select value={typeFilter} onValueChange={(value) => setTypeFilter(value as any)}>
-                <SelectTrigger id="type-filter" data-testid="select-type-filter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="receita">Receitas</SelectItem>
-                  <SelectItem value="despesa">Despesas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="saldo" className="flex items-center gap-2"><DollarSign className="h-4 w-4" /> Saldo a Receber</TabsTrigger>
+          <TabsTrigger value="transactions" className="flex items-center gap-2"><FileText className="h-4 w-4" /> Transações</TabsTrigger>
+          <TabsTrigger value="bills" className="flex items-center gap-2"><AlertCircle className="h-4 w-4" /> Contas</TabsTrigger>
+        </TabsList>
 
-      {/* Charts */}
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Receitas vs Despesas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {monthlyData.length === 0 ? (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                Nenhum dado disponível para o período selecionado
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={monthlyData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="month" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'hsl(var(--card))', 
-                      border: '1px solid hsl(var(--border))',
-                      borderRadius: '6px'
-                    }}
-                    formatter={(value) => formatCurrency(Number(value))}
-                  />
-                  <Legend />
-                  <Bar dataKey="receita" fill="hsl(var(--chart-2))" name="Receita" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="despesa" fill="hsl(var(--chart-4))" name="Despesa" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Receitas por Categoria</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {categoryData.length === 0 ? (
-              <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-                Nenhuma receita disponível para o período selecionado
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={categoryData}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                  >
-                    {categoryData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(Number(value))} />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Fluxo de Caixa */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Fluxo de Caixa</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {monthlyData.length === 0 ? (
-            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-              Nenhum dado disponível para o período selecionado
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="month" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: 'hsl(var(--card))', 
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '6px'
-                  }}
-                  formatter={(value) => formatCurrency(Number(value))}
-                />
-                <Legend />
-                <Line type="monotone" dataKey="receita" stroke="hsl(var(--chart-2))" strokeWidth={2} name="Receita" />
-                <Line type="monotone" dataKey="despesa" stroke="hsl(var(--chart-4))" strokeWidth={2} name="Despesa" />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Tabs de Transações e Contas */}
-      <Tabs defaultValue="transactions" className="space-y-4">
-        <div className="flex items-center justify-between">
-          <TabsList>
-            <TabsTrigger value="transactions" data-testid="tab-transactions">
-              Transações
-            </TabsTrigger>
-            <TabsTrigger value="bills" data-testid="tab-bills">
-              Contas a Pagar/Receber
-            </TabsTrigger>
-          </TabsList>
-          <Dialog open={isBillDialogOpen} onOpenChange={(open) => {
-            setIsBillDialogOpen(open);
-            if (!open) resetBillForm();
-          }}>
-            <DialogTrigger asChild>
-              <Button data-testid="button-create-bill">
-                <Plus className="h-4 w-4 mr-2" />
-                Nova Conta
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingBill ? "Editar Conta" : "Nova Conta"}</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmitBill} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="bill-type">Tipo</Label>
-                  <Select value={billFormType} onValueChange={setBillFormType} required>
-                    <SelectTrigger id="bill-type" data-testid="select-bill-type">
-                      <SelectValue placeholder="Selecione o tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="receber">A Receber</SelectItem>
-                      <SelectItem value="pagar">A Pagar</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bill-description">Descrição</Label>
-                  <Input
-                    id="bill-description"
-                    value={billFormDescription}
-                    onChange={(e) => setBillFormDescription(e.target.value)}
-                    placeholder="Descrição da conta"
-                    data-testid="input-bill-description"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bill-value">Valor</Label>
-                  <Input
-                    id="bill-value"
-                    value={billFormValue}
-                    onChange={(e) => setBillFormValue(e.target.value)}
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    data-testid="input-bill-value"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bill-date">Data de Emissão</Label>
-                  <Input
-                    id="bill-date"
-                    value={billFormDate}
-                    onChange={(e) => setBillFormDate(e.target.value)}
-                    type="date"
-                    data-testid="input-bill-date"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bill-due-date">Data de Vencimento</Label>
-                  <Input
-                    id="bill-due-date"
-                    value={billFormDueDate}
-                    onChange={(e) => setBillFormDueDate(e.target.value)}
-                    type="date"
-                    data-testid="input-bill-due-date"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bill-project">Projeto (Opcional)</Label>
-                  <Select value={billFormProjectId} onValueChange={setBillFormProjectId}>
-                    <SelectTrigger id="bill-project" data-testid="select-bill-project">
-                      <SelectValue placeholder="Sem Projeto" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {projects.map(project => (
-                        <SelectItem key={project.id} value={project.id}>
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="bill-status">Status</Label>
-                  <Select value={billFormStatus} onValueChange={setBillFormStatus} required>
-                    <SelectTrigger id="bill-status" data-testid="select-bill-status">
-                      <SelectValue placeholder="Selecione o status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pendente">Pendente</SelectItem>
-                      <SelectItem value="pago">Pago</SelectItem>
-                      <SelectItem value="atrasado">Atrasado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <Button type="submit" className="w-full" data-testid="button-submit-bill">
-                  {editingBill ? "Atualizar Conta" : "Criar Conta"}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
-        </div>
-
-        <TabsContent value="transactions">
+        <TabsContent value="saldo" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Todas as Transações ({filteredTransactions.length})</CardTitle>
+              <CardTitle>Obras — Saldo a Receber</CardTitle>
             </CardHeader>
             <CardContent>
-          {transactionsLoading ? (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center justify-between p-4 rounded-lg border" data-testid={`skeleton-transaction-${i}`}>
-                  <div className="flex items-center gap-4">
-                    <Skeleton className="h-10 w-10 rounded-full" />
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-48" />
-                      <Skeleton className="h-3 w-32" />
-                    </div>
-                  </div>
-                  <Skeleton className="h-6 w-24" />
-                </div>
-              ))}
-            </div>
-          ) : filteredTransactions.length === 0 ? (
-            <div className="text-center py-12" data-testid="empty-transactions">
-              <Wallet className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium mb-2">Nenhuma transação encontrada</h3>
-              <p className="text-sm text-muted-foreground">
-                Crie transações para visualizar o histórico financeiro
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead>Projeto</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTransactions.map((transaction) => {
-                    const project = projects.find(p => p.id === transaction.projectId);
-                    return (
-                      <TableRow key={transaction.id} data-testid={`transaction-row-${transaction.id}`}>
-                        <TableCell className="font-medium" data-testid={`transaction-date-${transaction.id}`}>
-                          {new Date(transaction.date).toLocaleDateString('pt-BR')}
+              {saldoPorProjeto.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">Nenhum projeto</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Projeto</TableHead>
+                      <TableHead>Contratado</TableHead>
+                      <TableHead>Recebido</TableHead>
+                      <TableHead>A Receber</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {saldoPorProjeto.map(({ projeto, valorContrato, recebido, aReceber, status }) => (
+                      <TableRow key={projeto.id}>
+                        <TableCell>
+                          <Link href={`/projetos/${projeto.id}`}>
+                            <span className="hover:underline">{projeto.name}</span>
+                          </Link>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {transaction.type === "receita" ? (
-                              <ArrowUpCircle className="h-4 w-4 text-chart-2" />
-                            ) : (
-                              <ArrowDownCircle className="h-4 w-4 text-chart-4" />
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setViewingTransaction(t);
+                                    setOpenViewFiles(true);
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Ver arquivos</TooltipContent>
+                            </Tooltip>
+                            
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setAttachingTransaction(t);
+                                    setOpenAttachFile(true);
+                                  }}
+                                >
+                                  <Upload className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Anexar arquivo</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getTransactionFiles(t.id).length > 0 && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Paperclip className="h-3 w-3 mr-1" />
+                                {getTransactionFiles(t.id).length}
+                              </Badge>
                             )}
-                            <span className={transaction.type === "receita" ? "text-chart-2" : "text-chart-4"}>
-                              {transaction.type === "receita" ? "Receita" : "Despesa"}
-                            </span>
                           </div>
                         </TableCell>
-                        <TableCell data-testid={`transaction-description-${transaction.id}`}>
-                          {transaction.description}
-                        </TableCell>
-                        <TableCell data-testid={`transaction-project-${transaction.id}`}>
-                          {project?.name || "N/A"}
-                        </TableCell>
-                        <TableCell className="text-right font-mono font-bold" data-testid={`transaction-value-${transaction.id}`}>
-                          <span className={transaction.type === "receita" ? "text-chart-2" : "text-chart-4"}>
-                            {transaction.type === "receita" ? "+" : "-"}{formatCurrency(parseFloat(transaction.value))}
-                          </span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleEditTransaction(transaction)}
-                              data-testid={`button-edit-transaction-${transaction.id}`}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => deleteTransactionMutation.mutate(transaction.id)}
-                              data-testid={`button-delete-transaction-${transaction.id}`}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setViewingTransaction(t);
+                                    setOpenViewFiles(true);
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Ver arquivos</TooltipContent>
+                            </Tooltip>
+                            
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setAttachingTransaction(t);
+                                    setOpenAttachFile(true);
+                                  }}
+                                >
+                                  <Upload className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Anexar arquivo</TooltipContent>
+                            </Tooltip>
                           </div>
                         </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getTransactionFiles(t.id).length > 0 && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Paperclip className="h-3 w-3 mr-1" />
+                                {getTransactionFiles(t.id).length}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setViewingTransaction(t);
+                                    setOpenViewFiles(true);
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Ver arquivos</TooltipContent>
+                            </Tooltip>
+                            
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setAttachingTransaction(t);
+                                    setOpenAttachFile(true);
+                                  }}
+                                >
+                                  <Upload className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Anexar arquivo</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-semibold">{formatCurrency(valorContrato)}</TableCell>
+                        <TableCell>{formatCurrency(recebido)}</TableCell>
+                        <TableCell className={aReceber > 0 ? "text-orange-600 font-semibold" : ""}>{formatCurrency(aReceber)}</TableCell>
+                        <TableCell>{statusBadge(status)}</TableCell>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="bills">
+        <TabsContent value="transactions" className="mt-6">
           <Card>
             <CardHeader>
-              <CardTitle>Contas a Pagar e Receber ({bills.length})</CardTitle>
+              <CardTitle>Transações</CardTitle>
             </CardHeader>
             <CardContent>
-              {billsLoading ? (
-                <div className="space-y-4">
-                  {[...Array(5)].map((_, i) => (
-                    <div key={i} className="flex items-center justify-between p-4 rounded-lg border" data-testid={`skeleton-bill-${i}`}>
-                      <div className="flex items-center gap-4">
-                        <Skeleton className="h-10 w-10 rounded-full" />
-                        <div className="space-y-2">
-                          <Skeleton className="h-4 w-48" />
-                          <Skeleton className="h-3 w-32" />
-                        </div>
-                      </div>
-                      <Skeleton className="h-6 w-24" />
-                    </div>
-                  ))}
-                </div>
-              ) : bills.length === 0 ? (
-                <div className="text-center py-12" data-testid="empty-bills">
-                  <FileText className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Nenhuma conta encontrada</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Crie contas a pagar ou receber para gerenciar suas finanças
-                  </p>
-                </div>
+              {loadingTransactions ? (
+                <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+              ) : filteredTransactions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">Nenhuma transação registrada</div>
               ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Vencimento</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Descrição</TableHead>
-                        <TableHead>Projeto</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Valor</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {bills.map((bill) => {
-                        const project = projects.find(p => p.id === bill.projectId);
-                        const isOverdue = bill.status === "pendente" && new Date(bill.dueDate) < new Date();
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Projeto</TableHead>
+                      <TableHead>Arquivos</TableHead>
+                      <TableHead>Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTransactions.map((t) => (
+                      <TableRow key={t.id}>
+                        <TableCell>
+                          <Badge className={`text-xs ${t.type === "receita" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{t.type.toUpperCase()}</Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[360px] truncate">{t.description}</TableCell>
+                        <TableCell className="font-semibold">{formatCurrency(t.value)}</TableCell>
+                        <TableCell>{t.date}</TableCell>
+                        <TableCell>
+                          {t.projectId ? (
+                            <Link href={`/projetos/${t.projectId}`}>
+                              <span className="hover:underline">{getProjectName(t.projectId)}</span>
+                            </Link>
+                          ) : (
+                            <span className="text-muted-foreground">Sem projeto</span>
+                          )}
+                        </TableCell>
                         
-                        return (
-                          <TableRow key={bill.id} data-testid={`bill-row-${bill.id}`}>
-                            <TableCell className="font-medium" data-testid={`bill-due-date-${bill.id}`}>
-                              {new Date(bill.dueDate).toLocaleDateString('pt-BR')}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                {bill.type === "receber" ? (
-                                  <ArrowUpCircle className="h-4 w-4 text-chart-2" />
-                                ) : (
-                                  <ArrowDownCircle className="h-4 w-4 text-chart-4" />
-                                )}
-                                <span className={bill.type === "receber" ? "text-chart-2" : "text-chart-4"}>
-                                  {bill.type === "receber" ? "A Receber" : "A Pagar"}
-                                </span>
-                              </div>
-                            </TableCell>
-                            <TableCell data-testid={`bill-description-${bill.id}`}>
-                              {bill.description}
-                            </TableCell>
-                            <TableCell data-testid={`bill-project-${bill.id}`}>
-                              {project?.name || "N/A"}
-                            </TableCell>
-                            <TableCell>
-                              <Badge 
-                                variant={
-                                  bill.status === "pago" ? "default" : 
-                                  isOverdue ? "destructive" : 
-                                  "secondary"
-                                }
-                                data-testid={`bill-status-${bill.id}`}
-                              >
-                                {bill.status === "pago" ? "Pago" : 
-                                 isOverdue ? "Atrasado" : 
-                                 "Pendente"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right font-mono font-bold" data-testid={`bill-value-${bill.id}`}>
-                              <span className={bill.type === "receber" ? "text-chart-2" : "text-chart-4"}>
-                                {bill.type === "receber" ? "+" : "-"}{formatCurrency(parseFloat(bill.value))}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                {bill.status !== "pago" && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleMarkAsPaid(bill)}
-                                    data-testid={`button-mark-paid-${bill.id}`}
-                                    title="Marcar como pago"
-                                  >
-                                    <CheckCircle2 className="h-4 w-4 text-chart-2" />
-                                  </Button>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleEditBill(bill)}
-                                  data-testid={`button-edit-bill-${bill.id}`}
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => deleteBillMutation.mutate(bill.id)}
-                                  data-testid={`button-delete-bill-${bill.id}`}
-                                >
-                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="bills" className="mt-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Contas a Pagar e Receber</CardTitle>
+                <Button size="sm" className="gap-2" onClick={() => setOpenNewBill(true)}>
+                  <Plus className="h-4 w-4" /> Adicionar Conta
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {loadingBills ? (
+                <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+              ) : filteredBills.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">Nenhuma conta registrada</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Vencimento</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Projeto</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredBills.map((b) => (
+                      <TableRow key={b.id}>
+                        <TableCell>{b.dueDate}</TableCell>
+                        <TableCell>
+                          <Badge className={`text-xs ${b.type === "receber" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{b.type.toUpperCase()}</Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[360px] truncate">{b.description}</TableCell>
+                        <TableCell>
+                          {b.projectId ? (
+                            <Link href={`/projetos/${b.projectId}`}>
+                              <span className="hover:underline">{getProjectName(b.projectId)}</span>
+                            </Link>
+                          ) : (
+                            <span className="text-muted-foreground">Sem projeto</span>
+                          )}
+                        </TableCell>
+                        <TableCell>{statusBadge(b.status)}</TableCell>
+                        <TableCell className="font-semibold">{formatCurrency(b.value)}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-2"
+                              disabled={b.status === "pago" || markPaidMutation.isPending}
+                              onClick={() => markPaidMutation.mutate(b.id)}
+                            >
+                              <CheckCircle2 className="h-4 w-4" /> Marcar como pago
+                            </Button>
+                            
+                            <AlertDialog>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <AlertDialogTrigger asChild>
+                                    <Button size="icon" variant="ghost" className="text-muted-foreground hover:text-red-600">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                </TooltipTrigger>
+                                <TooltipContent>Excluir</TooltipContent>
+                              </Tooltip>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Excluir conta?</AlertDialogTitle>
+                                  <AlertDialogDescription>Esta ação não pode ser desfeita.</AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => deleteBillMutation.mutate(b.id)} disabled={deleteBillMutation.isPending}>Confirmar</AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+          <Dialog open={openNewBill} onOpenChange={setOpenNewBill}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Nova Conta</DialogTitle>
+                <DialogDescription>Cadastre uma despesa de escritório ou um recebimento.</DialogDescription>
+              </DialogHeader>
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  const fd = new FormData(e.currentTarget as HTMLFormElement);
+                  const description = String(fd.get("description") || "").trim();
+                  const value = String(fd.get("value") || "0");
+                  const dueDate = String(fd.get("dueDate") || "");
+                  const projectId = newBillProjectId === "none" ? null : newBillProjectId;
+                  createBillMutation.mutate({ type: newBillType, description, value, dueDate, status: "pendente", projectId });
+                }}
+                className="space-y-4"
+              >
+                <div className="space-y-2">
+                  <Label>Tipo</Label>
+                  <Select value={newBillType} onValueChange={(v) => setNewBillType(v as any)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pagar">Pagar (Despesa)</SelectItem>
+                      <SelectItem value="receber">Receber</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
+                <div className="space-y-2">
+                  <Label>Descrição</Label>
+                  <Input name="description" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Valor</Label>
+                  <Input name="value" type="number" step="0.01" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Vencimento</Label>
+                  <Input name="dueDate" type="date" required />
+                </div>
+                <div className="space-y-2">
+                  <Label>Projeto (opcional)</Label>
+                  <Select value={newBillProjectId} onValueChange={setNewBillProjectId}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Sem projeto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sem projeto</SelectItem>
+                      {projects.map(p => (
+                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setOpenNewBill(false)}>Cancelar</Button>
+                  <Button type="submit" disabled={createBillMutation.isPending}>Salvar</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </TabsContent>
+
+        <TabsContent value="transactions" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Transações</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {loadingTransactions ? (
+                <div className="text-center py-8 text-muted-foreground">Carregando...</div>
+              ) : filteredTransactions.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">Nenhuma transação registrada</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Projeto</TableHead>
+                      <TableHead>Arquivos</TableHead>
+                      <TableHead>Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredTransactions.map((t) => (
+                      <TableRow key={t.id}>
+                        <TableCell>
+                          <Badge className={`text-xs ${t.type === "receita" ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>{t.type.toUpperCase()}</Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[360px] truncate">{t.description}</TableCell>
+                        <TableCell className="font-semibold">{formatCurrency(t.value)}</TableCell>
+                        <TableCell>{t.date}</TableCell>
+                        <TableCell>
+                          {t.projectId ? (
+                            <Link href={`/projetos/${t.projectId}`}>
+                              <span className="hover:underline">{getProjectName(t.projectId)}</span>
+                            </Link>
+                          ) : (
+                            <span className="text-muted-foreground">Sem projeto</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {getTransactionFiles(t.id).length > 0 && (
+                              <Badge variant="secondary" className="text-xs">
+                                <Paperclip className="h-3 w-3 mr-1" />
+                                {getTransactionFiles(t.id).length}
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setViewingTransaction(t);
+                                    setOpenViewFiles(true);
+                                  }}
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Ver arquivos</TooltipContent>
+                            </Tooltip>
+                            
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => {
+                                    setAttachingTransaction(t);
+                                    setOpenAttachFile(true);
+                                  }}
+                                >
+                                  <Upload className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Anexar arquivo</TooltipContent>
+                            </Tooltip>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* File Upload Dialog */}
+      <Dialog open={openAttachFile} onOpenChange={setOpenAttachFile}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Anexar Arquivo à Transação</DialogTitle>
+            <DialogDescription>
+              Anexe documentos fiscais, comprovantes ou outros arquivos relacionados a esta transação
+            </DialogDescription>
+          </DialogHeader>
+          {attachingTransaction && (
+            <div className="space-y-4">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="font-medium">{attachingTransaction.description}</p>
+                <p className="text-sm text-muted-foreground">
+                  R$ {parseFloat(attachingTransaction.value).toFixed(2)} - {new Date(attachingTransaction.date).toLocaleDateString('pt-BR')}
+                </p>
+              </div>
+              
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground mb-2">Clique para anexar arquivo</p>
+                <input
+                  type="file"
+                  accept=".pdf,.xml,.jpg,.jpeg,.png,.doc,.docx"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const uploadParams = await handleGetUploadParameters();
+                      const uploadResponse = await fetch(uploadParams.url, {
+                        method: uploadParams.method,
+                        body: file,
+                        headers: {
+                          'Content-Type': file.type || 'application/octet-stream'
+                        }
+                      });
+                      if (uploadResponse.ok) {
+                        const result = {
+                          successful: [{
+                            name: file.name,
+                            type: file.type,
+                            size: file.size,
+                            uploadURL: uploadParams.url
+                          }]
+                        };
+                        handleUploadComplete(result);
+                      } else {
+                        toast({ title: "Erro ao fazer upload do arquivo", variant: "destructive" });
+                      }
+                    }
+                  }}
+                  className="hidden"
+                  id="file-upload"
+                />
+                <label htmlFor="file-upload" className="cursor-pointer">
+                  <Button type="button" variant="outline" onClick={() => document.getElementById('file-upload')?.click()}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Selecionar Arquivo
+                  </Button>
+                </label>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Formatos aceitos: PDF, XML, JPG, PNG, DOC (máx. 10MB)
+                </p>
+              </div>
+              
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setAttachingTransaction(null);
+                  setOpenAttachFile(false);
+                }}
+                className="w-full"
+              >
+                Cancelar
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* File Viewing Dialog */}
+      <Dialog open={openViewFiles} onOpenChange={setOpenViewFiles}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Arquivos Anexados</DialogTitle>
+            <DialogDescription>
+              Veja e abra os arquivos anexados a esta transação
+            </DialogDescription>
+          </DialogHeader>
+          {viewingTransaction && (
+            <div className="space-y-4">
+              <div className="p-3 bg-gray-50 rounded-lg">
+                <p className="font-medium">{viewingTransaction.description}</p>
+                <p className="text-sm text-muted-foreground">
+                  R$ {parseFloat(viewingTransaction.value).toFixed(2)} - {new Date(viewingTransaction.date).toLocaleDateString('pt-BR')}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                {getTransactionFiles(viewingTransaction.id).length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Nenhum arquivo anexado a esta transação.</p>
+                ) : (
+                  getTransactionFiles(viewingTransaction.id).map((file: any) => (
+                    <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <FileText className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium text-sm">{file.fileName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {file.fileType} - {(file.fileSize / 1024).toFixed(1)} KB
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => window.open(file.objectPath, '_blank')}
+                      >
+                        Abrir
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setViewingTransaction(null);
+                  setOpenViewFiles(false);
+                }}
+                className="w-full"
+              >
+                Fechar
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Separator />
+      <div className="text-xs text-muted-foreground">Gerencie suas finanças com clareza.</div>
     </div>
   );
 }

@@ -64,10 +64,12 @@ export default function Projetos() {
   const [statusFilter, setStatusFilter] = useState("todos");
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>("todos");
   const [sortBy, setSortBy] = useState<"recent" | "valor_desc" | "valor_asc" | "recebido_desc">("recent");
+  const [kindFilter, setKindFilter] = useState<"todos" | "obra" | "administrativo">("todos");
   const [openNew, setOpenNew] = useState(false);
   const [selectedProject, setSelectedProject] = useState<ProjectWithTransactions | null>(null);
   const [openReceita, setOpenReceita] = useState(false);
   const [openDespesa, setOpenDespesa] = useState(false);
+  const [newProjectType, setNewProjectType] = useState<string>("vidro");
   const { toast } = useToast();
 
   // Fetch projects
@@ -160,7 +162,11 @@ export default function Projetos() {
                          projeto.client.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "todos" || projeto.status === statusFilter;
     const matchesPayment = paymentFilter === "todos" || projeto.paymentStatus === paymentFilter;
-    return matchesSearch && matchesStatus && matchesPayment;
+    const isAdminFolder = (projeto.client.name || "").toLowerCase() === "administrativo" || projeto.type === "administrativo";
+    const matchesKind =
+      kindFilter === "todos" ||
+      (kindFilter === "administrativo" ? isAdminFolder : !isAdminFolder);
+    return matchesSearch && matchesStatus && matchesPayment && matchesKind;
   });
 
   const orderedProjetos = useMemo(() => {
@@ -181,16 +187,17 @@ export default function Projetos() {
   // Create project mutation
   const createProjectMutation = useMutation({
     mutationFn: async (data: FormData) => {
-      const projectData = {
+      const clientId = data.get("clientId") as string | null;
+      const base = {
         name: data.get("name") as string,
-        clientId: data.get("clientId") as string,
-        description: data.get("description") as string || "",
+        description: (data.get("description") as string) || "",
         value: data.get("value") as string,
         type: data.get("type") as string,
         status: "orcamento",
-        date: new Date().toLocaleDateString('pt-BR'),
-      };
-      const response = await apiRequest("POST", "/api/projects", projectData);
+        date: new Date().toISOString().split('T')[0],
+      } as Record<string, any>;
+      if (clientId) base.clientId = clientId;
+      const response = await apiRequest("POST", "/api/projects", base);
       return response.json();
     },
     onSuccess: () => {
@@ -316,9 +323,9 @@ export default function Projetos() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Projetos</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Projetos & Pastas</h1>
           <p className="text-muted-foreground mt-1">
-            Acompanhe e gerencie todos os seus projetos em um só lugar.
+            Acompanhe obras e pastas administrativas em um só lugar.
           </p>
         </div>
         <Dialog open={openNew} onOpenChange={setOpenNew}>
@@ -345,21 +352,28 @@ export default function Projetos() {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="client">Cliente</Label>
-                  <Select name="clientId" required>
-                    <SelectTrigger data-testid="select-cliente">
-                      <SelectValue placeholder="Selecione o cliente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {clients.map((client) => (
-                        <SelectItem key={client.id} value={client.id}>
-                          {client.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {newProjectType !== "administrativo" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="client">Cliente</Label>
+                    <Select name="clientId" required>
+                      <SelectTrigger data-testid="select-cliente">
+                        <SelectValue placeholder="Selecione o cliente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clients.map((client) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label>Cliente</Label>
+                    <div className="text-sm text-muted-foreground">Pasta administrativa não requer cliente</div>
+                  </div>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Descrição</Label>
@@ -380,12 +394,12 @@ export default function Projetos() {
                     step="0.01"
                     placeholder="0.00" 
                     data-testid="input-projeto-value"
-                    required
+                    required={newProjectType !== "administrativo"}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="type">Tipo</Label>
-                  <Select name="type" required>
+                  <Select name="type" required onValueChange={(v) => setNewProjectType(v)}>
                     <SelectTrigger data-testid="select-tipo">
                       <SelectValue placeholder="Selecione o tipo" />
                     </SelectTrigger>
@@ -393,6 +407,7 @@ export default function Projetos() {
                       <SelectItem value="vidro">Vidros</SelectItem>
                       <SelectItem value="espelho">Espelhos</SelectItem>
                       <SelectItem value="reparo">Reparo</SelectItem>
+                      <SelectItem value="administrativo">Administrativo (Pasta)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -477,6 +492,11 @@ export default function Projetos() {
                 className="pl-10"
               />
             </div>
+            <ToggleGroup type="single" value={kindFilter} onValueChange={(v) => v && setKindFilter(v as any)}>
+              <ToggleGroupItem value="todos">Todos</ToggleGroupItem>
+              <ToggleGroupItem value="obra">Obras</ToggleGroupItem>
+              <ToggleGroupItem value="administrativo">Pastas</ToggleGroupItem>
+            </ToggleGroup>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Status do Projeto" />
@@ -525,6 +545,7 @@ export default function Projetos() {
         ) : filteredProjetos.length > 0 ? (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {orderedProjetos.map((projeto) => {
+              const isAdminFolder = (projeto.client.name || "").toLowerCase() === "administrativo" || projeto.type === "administrativo";
               const despesas = projeto.transactions
                 .filter(t => t.type === 'despesa')
                 .reduce((sum, t) => sum + parseFloat(String(t.value)), 0);
@@ -540,20 +561,28 @@ export default function Projetos() {
                     onClick={() => navigate(`/projetos/${projeto.id}`)}
                   >
                     <div className="flex items-start justify-between">
-                      <ProjectStatusBadge status={projeto.status} />
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        {projeto.paymentStatus === 'pago' && <CheckCircle2 className="h-3 w-3 text-green-500" />}
-                        {projeto.paymentStatus === 'atrasado' && <AlertCircle className="h-3 w-3 text-red-500" />}
-                        {projeto.paymentStatus === 'pendente' && <Clock className="h-3 w-3 text-yellow-500" />}
-                        <span className="capitalize">{projeto.paymentStatus}</span>
-                      </div>
+                      {isAdminFolder ? (
+                        <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300">Pasta Administrativa</Badge>
+                      ) : (
+                        <>
+                          <ProjectStatusBadge status={projeto.status} />
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            {projeto.paymentStatus === 'pago' && <CheckCircle2 className="h-3 w-3 text-green-500" />}
+                            {projeto.paymentStatus === 'atrasado' && <AlertCircle className="h-3 w-3 text-red-500" />}
+                            {projeto.paymentStatus === 'pendente' && <Clock className="h-3 w-3 text-yellow-500" />}
+                            <span className="capitalize">{projeto.paymentStatus}</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                     <CardTitle className="text-lg font-semibold pt-2 group-hover:text-primary transition-colors">
                       {projeto.name}
                     </CardTitle>
-                    <p className="text-sm text-muted-foreground flex items-center gap-2">
-                      <User className="h-3 w-3" /> {projeto.client.name}
-                    </p>
+                    {!isAdminFolder && (
+                      <p className="text-sm text-muted-foreground flex items-center gap-2">
+                        <User className="h-3 w-3" /> {projeto.client.name}
+                      </p>
+                    )}
                     <p className="text-sm text-muted-foreground flex items-center gap-2">
                       <Calendar className="h-3 w-3" /> {new Date(projeto.createdAt).toLocaleDateString('pt-BR')}
                     </p>
@@ -564,37 +593,58 @@ export default function Projetos() {
                   >
                     <Separator className="my-3" />
                     <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Valor</span>
-                        <span className="font-medium">{formatCurrency(projeto.valorCobrado)}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Recebido</span>
-                        <span className="font-medium text-green-600">{formatCurrency(projeto.receitas)}</span>
-                      </div>
-                      {projeto.status === 'finalizado' && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground font-bold">Lucro</span>
-                          <span className={`font-bold ${lucro >= 0 ? 'text-green-700' : 'text-red-600'}`}>
-                            {formatCurrency(lucro)}
-                          </span>
-                        </div>
+                      {isAdminFolder ? (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Despesas</span>
+                            <span className="font-medium text-red-600">{formatCurrency(despesas)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Movimentos</span>
+                            <span className="font-medium">{projeto.transactions.length}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Valor</span>
+                            <span className="font-medium">{formatCurrency(projeto.valorCobrado)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Recebido</span>
+                            <span className="font-medium text-green-600">{formatCurrency(projeto.receitas)}</span>
+                          </div>
+                          {projeto.status === 'finalizado' && (
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground font-bold">Lucro</span>
+                              <span className={`font-bold ${lucro >= 0 ? 'text-green-700' : 'text-red-600'}`}>
+                                {formatCurrency(lucro)}
+                              </span>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
-                    <Progress value={projeto.percentualRecebido} className="mt-4 h-2" />
-                    <p className="text-xs text-muted-foreground mt-1 text-right">{projeto.percentualRecebido.toFixed(0)}% recebido</p>
+                    {!isAdminFolder && (
+                      <>
+                        <Progress value={projeto.percentualRecebido} className="mt-4 h-2" />
+                        <p className="text-xs text-muted-foreground mt-1 text-right">{projeto.percentualRecebido.toFixed(0)}% recebido</p>
+                      </>
+                    )}
                   </CardContent>
                   <CardFooter className="bg-muted/40 px-6 py-3 transition-all duration-300 opacity-0 group-hover:opacity-100">
                     <div className="flex w-full justify-end gap-2">
                       <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="ghost" size="sm" onClick={() => { setOpenReceita(true); setSelectedProject(projeto); }}>
-                              <TrendingUp className="h-4 w-4 text-green-500" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent><p>Adicionar Receita</p></TooltipContent>
-                        </Tooltip>
+                        {!isAdminFolder && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="ghost" size="sm" onClick={() => { setOpenReceita(true); setSelectedProject(projeto); }}>
+                                <TrendingUp className="h-4 w-4 text-green-500" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent><p>Adicionar Receita</p></TooltipContent>
+                          </Tooltip>
+                        )}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button variant="ghost" size="sm" onClick={() => { setOpenDespesa(true); setSelectedProject(projeto); }}>
