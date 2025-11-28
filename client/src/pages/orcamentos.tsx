@@ -59,9 +59,9 @@ export default function Orcamentos() {
   const [openNew, setOpenNew] = useState(false);
   const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
-  const [quoteItems, setQuoteItems] = useState<Array<{ 
-    description: string; 
-    quantity: string; 
+  const [quoteItems, setQuoteItems] = useState<Array<{
+    description: string;
+    quantity: string;
     width?: string;
     height?: string;
     colorThickness?: string;
@@ -70,7 +70,7 @@ export default function Orcamentos() {
     line?: string;
     deliveryDate?: string;
     itemObservations?: string;
-    unitPrice: string; 
+    unitPrice: string;
     imageUrl?: string;
   }>>([
     { description: "", quantity: "1", unitPrice: "0" }
@@ -95,7 +95,7 @@ export default function Orcamentos() {
   });
 
   // Get items for selected quote
-  const selectedQuoteItems = selectedQuote 
+  const selectedQuoteItems = selectedQuote
     ? allItems.filter(item => item.quoteId === selectedQuote.id)
     : [];
 
@@ -142,7 +142,7 @@ export default function Orcamentos() {
       if (!hasValidItems) {
         throw new Error("Adicione pelo menos um item com descrição antes de salvar");
       }
-      
+
       const quoteData = {
         clientId: data.get("clientId") as string,
         number: generateQuoteNumber(),
@@ -153,7 +153,7 @@ export default function Orcamentos() {
         discount: data.get("discount") as string || "0",
         observations: data.get("observations") as string || "",
       };
-      
+
       const response = await apiRequest("POST", "/api/quotes", quoteData);
       const quote = await response.json();
 
@@ -243,13 +243,13 @@ export default function Orcamentos() {
   const updateQuoteMutation = useMutation({
     mutationFn: async (data: FormData) => {
       if (!editingQuote) throw new Error("No quote to edit");
-      
+
       // Verify that we have at least one valid item with description
       const hasValidItems = quoteItems.some(item => item.description && item.description.trim());
       if (!hasValidItems) {
         throw new Error("Adicione pelo menos um item com descrição antes de salvar");
       }
-      
+
       const quoteData = {
         clientId: data.get("clientId") as string,
         validUntil: data.get("validUntil") as string,
@@ -258,7 +258,7 @@ export default function Orcamentos() {
         discount: data.get("discount") as string || "0",
         observations: data.get("observations") as string || "",
       };
-      
+
       const response = await apiRequest("PATCH", `/api/quotes/${editingQuote.id}`, quoteData);
       const quote = await response.json();
 
@@ -349,7 +349,10 @@ export default function Orcamentos() {
       setUploadingImage(index);
 
       // Get upload URL
-      const uploadResponse = await apiRequest("POST", "/api/objects/upload");
+      const uploadResponse = await apiRequest("POST", "/api/objects/upload", {
+        bucketName: "project-files",
+        pathPrefix: "quote-item-imagens"
+      });
       const { uploadURL } = await uploadResponse.json();
 
       // Upload file
@@ -370,11 +373,14 @@ export default function Orcamentos() {
       // We need to convert it to: /objects/uploads/uuid
       const url = new URL(uploadURL);
       const pathname = url.pathname; // e.g., /bucket-name/PRIVATE_OBJECT_DIR/uploads/uuid
-      
+
       // Extract the part after the bucket and private dir to create /objects/ path
-      const pathParts = pathname.split('/uploads/');
-      const objectId = pathParts[pathParts.length - 1].split('?')[0];
-      const publicPath = `/objects/uploads/${objectId}`;
+      // URL format: .../bucketName/pathPrefix/uuid?token...
+      // We want to store: /objects/bucketName/pathPrefix/uuid
+
+      // Since we know the bucket and prefix we requested:
+      const targetPath = `/objects/project-files/quote-item-imagens/${objectId}`;
+      const publicPath = targetPath;
 
       // Update item with normalized public path
       const updated = [...quoteItems];
@@ -398,10 +404,10 @@ export default function Orcamentos() {
 
   const handleEditQuote = (quote: Quote) => {
     const items = allItems.filter(item => item.quoteId === quote.id);
-    
+
     setEditingQuote(quote);
     setDiscount(quote.discount || "0");
-    
+
     if (items.length > 0) {
       setQuoteItems(items.map(item => ({
         description: item.description,
@@ -420,7 +426,7 @@ export default function Orcamentos() {
     } else {
       setQuoteItems([{ description: "", quantity: "1", unitPrice: "0" }]);
     }
-    
+
     setOpenNew(true);
   };
 
@@ -483,9 +489,9 @@ export default function Orcamentos() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="local">Local/Ambiente</Label>
-                    <Input 
-                      id="local" 
-                      name="local" 
+                    <Input
+                      id="local"
+                      name="local"
                       placeholder="Ex: Banheiro Social"
                       data-testid="input-local"
                       defaultValue={editingQuote?.local || ""}
@@ -493,9 +499,9 @@ export default function Orcamentos() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="tipo">Tipo</Label>
-                    <Input 
-                      id="tipo" 
-                      name="tipo" 
+                    <Input
+                      id="tipo"
+                      name="tipo"
                       placeholder="Ex: Box de Vidro"
                       data-testid="input-tipo"
                       defaultValue={editingQuote?.tipo || ""}
@@ -506,10 +512,10 @@ export default function Orcamentos() {
 
               <div className="space-y-2">
                 <Label htmlFor="validUntil">Válido até *</Label>
-                <Input 
-                  id="validUntil" 
-                  name="validUntil" 
-                  type="date" 
+                <Input
+                  id="validUntil"
+                  name="validUntil"
+                  type="date"
                   data-testid="input-valid-until"
                   defaultValue={editingQuote?.validUntil}
                   required
@@ -518,9 +524,9 @@ export default function Orcamentos() {
 
               <div className="space-y-2">
                 <Label htmlFor="discount">Desconto (%)</Label>
-                <Input 
-                  id="discount" 
-                  name="discount" 
+                <Input
+                  id="discount"
+                  name="discount"
                   type="number"
                   step="0.01"
                   min="0"
@@ -698,9 +704,9 @@ export default function Orcamentos() {
                           </label>
                         </div>
                         {quoteItems.length > 1 && (
-                          <Button 
-                            type="button" 
-                            variant="ghost" 
+                          <Button
+                            type="button"
+                            variant="ghost"
                             size="icon"
                             onClick={() => removeItem(index)}
                             data-testid={`button-remove-item-${index}`}
@@ -747,8 +753,8 @@ export default function Orcamentos() {
 
               <div className="space-y-2">
                 <Label htmlFor="observations">Observações</Label>
-                <Textarea 
-                  id="observations" 
+                <Textarea
+                  id="observations"
                   name="observations"
                   placeholder="Ex: Inclui instalação e garantia de 1 ano"
                   rows={3}
@@ -757,13 +763,13 @@ export default function Orcamentos() {
                 />
               </div>
 
-              <Button 
-                type="submit" 
-                className="w-full" 
+              <Button
+                type="submit"
+                className="w-full"
                 data-testid="button-submit-quote"
                 disabled={editingQuote ? updateQuoteMutation.isPending : createQuoteMutation.isPending}
               >
-                {editingQuote 
+                {editingQuote
                   ? (updateQuoteMutation.isPending ? "Atualizando..." : "Atualizar Orçamento")
                   : (createQuoteMutation.isPending ? "Gerando..." : "Gerar Orçamento")
                 }
@@ -886,9 +892,9 @@ export default function Orcamentos() {
                           <div className="flex items-center justify-end gap-2">
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button 
-                                  variant="outline" 
-                                  size="icon" 
+                                <Button
+                                  variant="outline"
+                                  size="icon"
                                   onClick={() => setSelectedQuote(quote)}
                                   data-testid={`button-view-quote-${quote.id}`}
                                 >

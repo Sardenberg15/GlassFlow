@@ -30,20 +30,22 @@ export class ObjectNotFoundError extends Error {
 export class ObjectStorageService {
   constructor() { }
 
-  async getObjectEntityUploadURL(): Promise<string> {
+  async getObjectEntityUploadURL(bucketName: string = BUCKET_NAME, pathPrefix: string = ""): Promise<string> {
     if (!supabase) {
       console.error("Supabase client is not initialized. Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.");
       throw new Error("Supabase not configured");
     }
 
     const objectId = randomUUID();
-    const path = `${objectId}`;
+    // Ensure pathPrefix doesn't start with / and ends with / if not empty
+    const cleanPrefix = pathPrefix ? pathPrefix.replace(/^\/+/, '').replace(/\/+$/, '') + '/' : '';
+    const path = `${cleanPrefix}${objectId}`;
 
-    console.log(`Attempting to create signed upload URL for bucket '${BUCKET_NAME}' and path '${path}'`);
+    console.log(`Attempting to create signed upload URL for bucket '${bucketName}' and path '${path}'`);
 
     const { data, error } = await supabase
       .storage
-      .from(BUCKET_NAME)
+      .from(bucketName)
       .createSignedUploadUrl(path);
 
     if (error) {
@@ -56,14 +58,24 @@ export class ObjectStorageService {
 
   async getObjectEntityFile(objectPath: string): Promise<{ bucket: string, path: string }> {
     // objectPath comes from /objects/:objectPath(*)
-    // We expect /objects/uuid or similar
+    // We expect /objects/bucketName/path/to/file
 
     if (!objectPath.startsWith("/objects/")) {
       throw new ObjectNotFoundError();
     }
 
-    const path = objectPath.replace("/objects/", "");
-    return { bucket: BUCKET_NAME, path };
+    const relativePath = objectPath.replace("/objects/", "");
+    const parts = relativePath.split('/');
+
+    if (parts.length < 2) {
+      // Fallback for legacy paths that might just be /objects/uuid (assuming uploads bucket)
+      return { bucket: BUCKET_NAME, path: relativePath };
+    }
+
+    const bucket = parts[0];
+    const path = parts.slice(1).join('/');
+
+    return { bucket, path };
   }
 
   async downloadObject(file: { bucket: string, path: string }, res: Response) {
