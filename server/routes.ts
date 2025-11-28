@@ -21,11 +21,11 @@ async function syncProjectBills(project: Project) {
       .filter(t => t.type === 'receita')
       .reduce((sum, t) => sum + parseFloat(String(t.value)), 0);
     const pendingAmount = projectValue - receivedAmount;
-    
+
     // Get existing bill for this project (should be only one "receber" bill per project)
     const existingBills = await storage.getBillsByProject(project.id);
     const existingBill = existingBills.find(bill => bill.type === "receber");
-    
+
     if (pendingAmount > 0) {
       // Project has pending payment - create or update bill
       const billData = {
@@ -37,7 +37,7 @@ async function syncProjectBills(project: Project) {
         projectId: project.id,
         date: new Date().toISOString().split('T')[0],
       };
-      
+
       if (existingBill) {
         // Update existing bill
         await storage.updateBill(existingBill.id, billData);
@@ -182,10 +182,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const validatedData = insertProjectSchema.parse(incoming);
       const project = await storage.createProject(validatedData);
-      
+
       // Sync bills automatically for projects with pending payment
       await syncProjectBills(project);
-      
+
       res.status(201).json(project);
     } catch (error) {
       console.error("Project creation error:", error);
@@ -199,10 +199,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
       }
-      
+
       // Sync bills automatically after project update
       await syncProjectBills(project);
-      
+
       res.json(project);
     } catch (error) {
       res.status(400).json({ error: "Failed to update project" });
@@ -269,13 +269,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const body = { ...incoming, value: normalizedValue };
       const validatedData = insertTransactionSchema.parse(body);
       const transaction = await storage.createTransaction(validatedData);
-      
+
       // Sync bills when transaction changes project payment
       const project = await storage.getProject(transaction.projectId);
       if (project) {
         await syncProjectBills(project);
       }
-      
+
       res.status(201).json(transaction);
     } catch (error) {
       console.error("Transaction creation error:", error, "payload:", req.body);
@@ -305,13 +305,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log("PATCH /api/transactions/:id updated", { id: req.params.id, transaction });
-      
+
       // Sync bills when transaction changes
       const project = await storage.getProject(transaction.projectId);
       if (project) {
         await syncProjectBills(project);
       }
-      
+
       res.json(transaction);
     } catch (error) {
       console.error("Transaction update error:", error);
@@ -324,9 +324,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Get transaction before deleting to sync project bills
       const transactionToDelete = await storage.getTransaction(req.params.id);
-      
+
       await storage.deleteTransaction(req.params.id);
-      
+
       // Sync bills after transaction deletion
       if (transactionToDelete) {
         const project = await storage.getProject(transactionToDelete.projectId);
@@ -334,7 +334,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await syncProjectBills(project);
         }
       }
-      
+
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ error: "Failed to delete transaction" });
@@ -359,7 +359,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/transactions/files", async (req, res) => {
     try {
       const { transactionId, fileName, fileType, fileSize, objectPath } = req.body;
-      
+
       if (!transactionId || !fileName || !objectPath) {
         return res.status(400).json({ error: "Missing required fields" });
       }
@@ -423,7 +423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storage.getTransactions(),
       ]);
 
-      const activeProjects = projects.filter(p => 
+      const activeProjects = projects.filter(p =>
         p.status === 'aprovado' || p.status === 'execucao'
       ).length;
 
@@ -567,7 +567,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Ensure uploads dir exists
     try {
       fs.mkdirSync(localUploadsDir, { recursive: true });
-    } catch {}
+    } catch { }
 
     // Accept binary PUT uploads to /objects/uploads/:id
     app.put(
@@ -604,7 +604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const metaRaw = fs.readFileSync(filePath + ".meta.json", "utf8");
           const meta = JSON.parse(metaRaw);
           if (meta?.contentType) contentType = meta.contentType;
-        } catch {}
+        } catch { }
         res.setHeader("Content-Type", contentType);
         res.sendFile(filePath);
       } catch (error) {
@@ -639,9 +639,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const objectStorageService = new ObjectStorageService();
       const uploadURL = await objectStorageService.getObjectEntityUploadURL();
       res.json({ uploadURL });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating upload URL:", error);
-      res.status(500).json({ error: "Failed to generate upload URL" });
+      res.status(500).json({
+        error: "Failed to generate upload URL",
+        details: error.message,
+        stack: error.stack
+      });
     }
   });
 
@@ -658,17 +662,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/project-files", async (req, res) => {
     try {
       const validatedData = insertProjectFileSchema.parse(req.body);
-      
+
       // Normalize the object path from the upload URL
       const objectStorageService = new ObjectStorageService();
       const normalizedPath = objectStorageService.normalizeObjectEntityPath(validatedData.objectPath);
-      
+
       // Save with normalized path
       const file = await storage.createProjectFile({
         ...validatedData,
         objectPath: normalizedPath,
       });
-      
+
       res.status(201).json(file);
     } catch (error) {
       console.error("Project file creation error:", error);
@@ -946,7 +950,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/check", async (_req, res) => {
     try {
       const tables = [
-        'clients','projects','transactions','quotes','quote_items','project_files','transaction_files','bills'
+        'clients', 'projects', 'transactions', 'quotes', 'quote_items', 'project_files', 'transaction_files', 'bills'
       ];
       const results: Record<string, string | null> = {};
       for (const t of tables) {
