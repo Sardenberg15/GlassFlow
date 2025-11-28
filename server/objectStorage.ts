@@ -5,6 +5,13 @@ import { randomUUID } from "crypto";
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY;
 
+console.log("--- Supabase Configuration Check ---");
+console.log("SUPABASE_URL present:", !!supabaseUrl);
+console.log("SUPABASE_SERVICE_ROLE_KEY present:", !!process.env.SUPABASE_SERVICE_ROLE_KEY);
+console.log("SUPABASE_ANON_KEY present:", !!process.env.SUPABASE_ANON_KEY);
+console.log("Effective supabaseKey present:", !!supabaseKey);
+console.log("------------------------------------");
+
 if (!supabaseUrl || !supabaseKey) {
   console.warn("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY/SUPABASE_ANON_KEY");
 }
