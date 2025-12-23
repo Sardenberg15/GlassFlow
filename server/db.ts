@@ -21,9 +21,10 @@ if (!process.env.DATABASE_URL && !usingMemory) {
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 5, // Reduced from 20 to 5 to avoid MaxConnections limits on free tiers
-  idleTimeoutMillis: 30000,
+  max: 5, // Keep low for free tier
+  idleTimeoutMillis: 0, // Disable idle timeout to keep connections open indefinitely
   connectionTimeoutMillis: 10000, // 10s timeout
+  keepAlive: true, // Enable TCP keep-alive to prevent network dropouts
 });
 
 // Add detailed logging for debugging production connectivity
