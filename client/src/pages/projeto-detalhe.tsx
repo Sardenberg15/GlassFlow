@@ -81,7 +81,7 @@ export default function ProjetoDetalhe() {
         const parsed = JSON.parse(jsonPart);
         if (parsed?.details) description = parsed.details;
         else if (parsed?.error) description = parsed.error;
-      } catch {}
+      } catch { }
       toast({ title: "Erro ao adicionar transação", description, variant: "destructive" });
       console.error("Add transaction error:", error);
     }
@@ -346,10 +346,11 @@ export default function ProjetoDetalhe() {
             </Card>
 
             {!isAdminFolder && (
-              <GestaoObraPanel 
+              <GestaoObraPanel
                 project={{
                   id: project.id,
                   name: project.name,
+                  clientId: project.clientId,
                   value: project.value,
                   status: project.status,
                   transactions: transactions
@@ -391,11 +392,10 @@ export default function ProjetoDetalhe() {
                           <div key={transaction.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <span className={`px-2 py-1 text-xs rounded-full ${
-                                  transaction.type === 'receita' 
-                                    ? 'bg-green-100 text-green-800' 
+                                <span className={`px-2 py-1 text-xs rounded-full ${transaction.type === 'receita'
+                                    ? 'bg-green-100 text-green-800'
                                     : 'bg-red-100 text-red-800'
-                                }`}>
+                                  }`}>
                                   {transaction.type === 'receita' ? 'RECEITA' : 'DESPESA'}
                                 </span>
                                 <p className="font-medium">{transaction.description}</p>
@@ -417,9 +417,8 @@ export default function ProjetoDetalhe() {
                               )}
                             </div>
                             <div className="flex items-center gap-3">
-                              <div className={`font-bold text-lg ${
-                                transaction.type === 'receita' ? 'text-green-600' : 'text-red-600'
-                              }`}>
+                              <div className={`font-bold text-lg ${transaction.type === 'receita' ? 'text-green-600' : 'text-red-600'
+                                }`}>
                                 R$ {parseFloat(transaction.value).toFixed(2)}
                               </div>
                               <div className="flex gap-1">
@@ -483,9 +482,10 @@ export default function ProjetoDetalhe() {
         </TabsContent>
 
         <TabsContent value="documentos" className="mt-6">
-          <CartaoObras 
+          <CartaoObras
             projectId={projectId}
             projectName={project.name}
+            clientId={project.clientId}
             transactions={transactions}
           />
         </TabsContent>
@@ -597,41 +597,41 @@ export default function ProjetoDetalhe() {
             >
               <div>
                 <Label htmlFor="edit-description">Descrição</Label>
-                <Input 
-                  id="edit-description" 
-                  name="description" 
+                <Input
+                  id="edit-description"
+                  name="description"
                   defaultValue={editingTransaction.description}
-                  required 
+                  required
                 />
               </div>
               <div>
                 <Label htmlFor="edit-value">Valor</Label>
-                <Input 
-                  id="edit-value" 
-                  name="value" 
-                  type="number" 
-                  step="0.01" 
+                <Input
+                  id="edit-value"
+                  name="value"
+                  type="number"
+                  step="0.01"
                   defaultValue={editingTransaction.value}
-                  required 
+                  required
                 />
               </div>
               <div>
                 <Label htmlFor="edit-date">Data</Label>
-                <Input 
-                  id="edit-date" 
-                  name="date" 
-                  type="date" 
+                <Input
+                  id="edit-date"
+                  name="date"
+                  type="date"
                   defaultValue={editingTransaction.date}
-                  required 
+                  required
                 />
               </div>
               <div className="flex gap-2">
                 <Button type="submit" className="flex-1">
                   Salvar
                 </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => {
                     setOpenEditTransaction(false);
                     setEditingTransaction(null);
@@ -663,7 +663,7 @@ export default function ProjetoDetalhe() {
                   R$ {parseFloat(attachingTransaction.value).toFixed(2)} - {new Date(attachingTransaction.date).toLocaleDateString('pt-BR')}
                 </p>
               </div>
-              
+
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                 <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                 <p className="text-sm text-muted-foreground mb-2">Clique para anexar arquivo</p>
@@ -709,9 +709,9 @@ export default function ProjetoDetalhe() {
                   Formatos aceitos: PDF, XML, JPG, PNG, DOC (máx. 10MB)
                 </p>
               </div>
-              
-              <Button 
-                variant="outline" 
+
+              <Button
+                variant="outline"
                 onClick={() => {
                   setOpenAttachFile(false);
                   setAttachingTransaction(null);
@@ -784,8 +784,8 @@ export default function ProjetoDetalhe() {
                 )}
               </div>
 
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setOpenViewFiles(false);
                   setViewingTransaction(null);

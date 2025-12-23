@@ -32,7 +32,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica',
     backgroundColor: '#ffffff',
   },
-  
+
   // Header limpo com logo
   header: {
     flexDirection: 'row',
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: '#555555',
   },
-  
+
   // Informações do Projeto
   projectSection: {
     backgroundColor: '#f8fafc',
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     fontWeight: 'bold',
   },
-  
+
   // Resumo Financeiro
   financeSection: {
     marginBottom: 20,
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   summaryCardNegative: {
     color: '#dc2626',
   },
-  
+
   // Despesas Detalhadas
   expensesSection: {
     backgroundColor: '#ffffff',
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     color: '#64748b',
     marginTop: 3,
   },
-  
+
   // Tabela de despesas
   tableHeader: {
     flexDirection: 'row',
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
   tableRowAlternate: {
     backgroundColor: '#f9fafb',
   },
-  
+
   // Totais Finais
   totalsSection: {
     backgroundColor: '#f1f5f9',
@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1e40af',
   },
-  
+
   // Rodapé
   footer: {
     position: 'absolute',
@@ -291,7 +291,7 @@ function formatDate(dateString: string) {
 export function RelatorioObraPDF({ project, transactions, projectFiles, reportType, reportPeriod }: RelatorioObraPDFProps) {
   const receitas = transactions.filter(t => t.type === 'receita');
   const despesas = transactions.filter(t => t.type === 'despesa');
-  
+
   const totalReceitas = receitas.reduce((sum, t) => sum + parseFloat(String(t.value)), 0);
   const totalDespesas = despesas.reduce((sum, t) => sum + parseFloat(String(t.value)), 0);
   const saldo = totalReceitas - totalDespesas;
@@ -306,10 +306,9 @@ export function RelatorioObraPDF({ project, transactions, projectFiles, reportTy
     return acc;
   }, {} as Record<string, Transaction[]>);
 
-  // Top 10 despesas maiores
-  const topDespesas = despesas
-    .sort((a, b) => parseFloat(String(b.value)) - parseFloat(String(a.value)))
-    .slice(0, 10);
+  // Todas as despesas ordenadas por valor
+  const sortedDespesas = despesas
+    .sort((a, b) => parseFloat(String(b.value)) - parseFloat(String(a.value)));
 
   return (
     <Document>
@@ -317,7 +316,7 @@ export function RelatorioObraPDF({ project, transactions, projectFiles, reportTy
         {/* Header com Logo Real */}
         <View style={styles.header}>
           <View style={styles.logoContainer}>
-            <Image 
+            <Image
               src={logoBase64}
               style={styles.logo}
             />
@@ -352,7 +351,7 @@ export function RelatorioObraPDF({ project, transactions, projectFiles, reportTy
         {/* Resumo Financeiro */}
         <View style={styles.financeSection}>
           <Text style={styles.financeTitle}>RESUMO FINANCEIRO</Text>
-          
+
           <View style={styles.summaryCards}>
             <View style={styles.summaryCard}>
               <Text style={styles.summaryCardTitle}>TOTAL DE RECEITAS</Text>
@@ -378,21 +377,21 @@ export function RelatorioObraPDF({ project, transactions, projectFiles, reportTy
         {/* Despesas Detalhadas */}
         <View style={styles.expensesSection}>
           <View style={styles.expensesHeader}>
-            <Text style={styles.expensesTitle}>MAIORES DESPESAS DO PERÍODO</Text>
-            <Text style={styles.expensesSubTitle}>Top 10 despesas ordenadas por valor</Text>
+            <Text style={styles.expensesTitle}>DESPESAS DETALHADAS DO PERÍODO</Text>
+            <Text style={styles.expensesSubTitle}>Lista completa de despesas ordenadas por valor</Text>
           </View>
-          
+
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderText, { width: '15%' }]}>DATA</Text>
             <Text style={[styles.tableHeaderText, { width: '45%' }]}>DESCRIÇÃO</Text>
             <Text style={[styles.tableHeaderText, { width: '20%' }]}>CATEGORIA</Text>
             <Text style={[styles.tableHeaderText, { width: '20%', textAlign: 'right' }]}>VALOR</Text>
           </View>
-          
-          {topDespesas.map((despesa, index) => (
-            <View 
-              key={despesa.id} 
-              style={[styles.tableRow, index % 2 === 1 && styles.tableRowAlternate]}
+
+          {sortedDespesas.map((despesa, index) => (
+            <View
+              key={despesa.id}
+              style={[styles.tableRow, index % 2 === 1 ? styles.tableRowAlternate : {}]}
             >
               <Text style={[styles.tableRowText, { width: '15%' }]}>
                 {formatDate(despesa.date)}
@@ -423,7 +422,7 @@ export function RelatorioObraPDF({ project, transactions, projectFiles, reportTy
 // Componente de download para fallback
 export function RelatorioObraPDFDownload({ project, transactions, projectFiles, reportType, reportPeriod }: RelatorioObraPDFProps) {
   return (
-    <RelatorioObraPDF 
+    <RelatorioObraPDF
       project={project}
       transactions={transactions}
       projectFiles={projectFiles}

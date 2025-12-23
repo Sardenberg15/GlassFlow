@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 type ProjectBasics = {
   id: string;
   name: string;
+  clientId?: string;
   value: string | number;
   status: string;
   transactions: Transaction[];
@@ -35,7 +36,7 @@ const formatCurrency = (value: number | string) => {
 export function GestaoObraPanel({ project, onAddReceita, onAddDespesa, projectFiles = [] }: GestaoObraPanelProps) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const { toast } = useToast();
-  
+
   // Buscar arquivos do projeto se não foram fornecidos
   const { data: fetchedProjectFiles = [] } = useQuery<ProjectFile[]>({
     queryKey: ["/api/projects", project.id, "files"],
@@ -45,6 +46,18 @@ export function GestaoObraPanel({ project, onAddReceita, onAddDespesa, projectFi
       return response.json();
     },
     enabled: projectFiles.length === 0, // Só busca se não houver arquivos fornecidos
+  });
+
+  // Fetch client details
+  const { data: client } = useQuery({
+    queryKey: ["/api/clients", project.clientId],
+    queryFn: async () => {
+      if (!project.clientId) return null;
+      const response = await fetch(`/api/clients/${project.clientId}`);
+      if (!response.ok) throw new Error("Failed to fetch client");
+      return response.json();
+    },
+    enabled: !!project.clientId,
   });
 
   const finalProjectFiles = projectFiles.length > 0 ? projectFiles : fetchedProjectFiles;
@@ -90,10 +103,10 @@ export function GestaoObraPanel({ project, onAddReceita, onAddDespesa, projectFi
           onClick={async () => {
             try {
               setIsGeneratingPDF(true);
-              
+
               // Adicionar delay pequeno para garantir que o estado seja atualizado
               await new Promise(resolve => setTimeout(resolve, 100));
-              
+
               const blob = await pdf(
                 <RelatorioObraPDF
                   project={{
@@ -101,8 +114,8 @@ export function GestaoObraPanel({ project, onAddReceita, onAddDespesa, projectFi
                     name: project.name,
                     value: project.value,
                     status: project.status,
-                    client: "Cliente do Projeto",
-                    address: "Endereço do Projeto",
+                    client: client?.name || "Cliente do Projeto",
+                    address: client?.address || "Endereço do Projeto",
                     responsible: "Responsável Técnico"
                   }}
                   transactions={project.transactions}
@@ -114,32 +127,32 @@ export function GestaoObraPanel({ project, onAddReceita, onAddDespesa, projectFi
                   }}
                 />
               ).toBlob();
-              
+
               const url = URL.createObjectURL(blob);
               const link = document.createElement('a');
               link.href = url;
               link.download = `relatorio-obra-${(project.name || 'projeto').toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
-              
+
               document.body.appendChild(link);
               link.click();
               document.body.removeChild(link);
-              
+
               setTimeout(() => URL.revokeObjectURL(url), 100);
-              
+
               toast({
                 title: "Relatório gerado com sucesso!",
                 description: "O download do relatório foi iniciado.",
               });
             } catch (error: any) {
               console.error('Erro completo ao gerar PDF:', error);
-              
+
               let errorMessage = "Ocorreu um erro ao gerar o PDF.";
               if (error?.message?.includes('unitsPerEm')) {
                 errorMessage = "Erro de fonte no PDF. Tente novamente.";
               } else if (error?.message?.includes('undefined') || error?.message?.includes('null')) {
                 errorMessage = "Dados incompletos para gerar o PDF. Verifique se todos os dados estão carregados.";
               }
-              
+
               toast({
                 title: "Erro ao gerar relatório",
                 description: errorMessage,

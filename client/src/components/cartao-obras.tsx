@@ -21,6 +21,7 @@ import type { ProjectFile, Transaction } from "@shared/schema";
 interface CartaoObrasProps {
   projectId: string;
   projectName: string;
+  clientId?: string;
   transactions: Transaction[];
 }
 
@@ -32,7 +33,7 @@ const FILE_CATEGORIES = {
 
 type FileCategory = keyof typeof FILE_CATEGORIES;
 
-export function CartaoObras({ projectId, projectName, transactions }: CartaoObrasProps) {
+export function CartaoObras({ projectId, projectName, clientId, transactions }: CartaoObrasProps) {
   const [selectedCategory, setSelectedCategory] = useState<FileCategory>("nota_fiscal_recebida");
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [reportType, setReportType] = useState<'detailed' | 'summary'>('detailed');
@@ -43,9 +44,21 @@ export function CartaoObras({ projectId, projectName, transactions }: CartaoObra
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const { toast } = useToast();
 
+  // Fetch client details
+  const { data: client } = useQuery({
+    queryKey: ["/api/clients", clientId],
+    queryFn: async () => {
+      if (!clientId) return null;
+      const response = await fetch(`/api/clients/${clientId}`);
+      if (!response.ok) throw new Error("Failed to fetch client");
+      return response.json();
+    },
+    enabled: !!clientId,
+  });
+
   const receitas = transactions.filter(t => t.type === "receita");
   const despesas = transactions.filter(t => t.type === "despesa");
-  
+
   const totalReceitas = receitas.reduce((sum, t) => sum + parseFloat(String(t.value)), 0);
   const totalDespesas = despesas.reduce((sum, t) => sum + parseFloat(String(t.value)), 0);
   const saldo = totalReceitas - totalDespesas;
@@ -161,8 +174,8 @@ export function CartaoObras({ projectId, projectName, transactions }: CartaoObra
     name: projectName,
     value: totalReceitas,
     status: "Em Andamento",
-    client: "Cliente Exemplo",
-    address: "Endereço do Projeto",
+    client: client?.name || "Cliente Exemplo",
+    address: client?.address || "Endereço do Projeto",
     startDate: reportPeriod.start,
     endDate: reportPeriod.end,
     responsible: "Responsável pelo Projeto"
@@ -218,15 +231,15 @@ export function CartaoObras({ projectId, projectName, transactions }: CartaoObra
                   </div>
                 </div>
                 <div className="flex gap-2">
-                  <Button 
+                  <Button
                     className="flex-1"
                     onClick={async () => {
                       try {
                         setIsGeneratingPDF(true);
-                        
+
                         // Adicionar delay pequeno para garantir que o estado seja atualizado
                         await new Promise(resolve => setTimeout(resolve, 100));
-                        
+
                         // Gerar PDF diretamente
                         const blob = await pdf(
                           <RelatorioObraPDF
@@ -237,35 +250,35 @@ export function CartaoObras({ projectId, projectName, transactions }: CartaoObra
                             reportPeriod={reportPeriod}
                           />
                         ).toBlob();
-                        
+
                         // Criar URL do blob e fazer download
                         const url = URL.createObjectURL(blob);
                         const link = document.createElement('a');
                         link.href = url;
                         link.download = `relatorio-obra-${projectName.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
-                        
+
                         document.body.appendChild(link);
                         link.click();
                         document.body.removeChild(link);
-                        
+
                         setTimeout(() => URL.revokeObjectURL(url), 100);
-                        
+
                         toast({
                           title: "Relatório gerado com sucesso!",
                           description: "O download do relatório foi iniciado.",
                         });
-                        
+
                         setTimeout(() => setReportDialogOpen(false), 1000);
                       } catch (error: any) {
                         console.error('Erro completo ao gerar PDF:', error);
-                        
+
                         let errorMessage = "Ocorreu um erro ao gerar o PDF.";
                         if (error?.message?.includes('unitsPerEm')) {
                           errorMessage = "Erro de fonte no PDF. Tente novamente.";
                         } else if (error?.message?.includes('undefined') || error?.message?.includes('null')) {
                           errorMessage = "Dados incompletos para gerar o PDF. Verifique se todos os dados estão carregados.";
                         }
-                        
+
                         toast({
                           title: "Erro ao gerar relatório",
                           description: errorMessage,
@@ -424,8 +437,8 @@ export function CartaoObras({ projectId, projectName, transactions }: CartaoObra
             <div className="space-y-2">
               {filesByCategory.length > 0 ? (
                 filesByCategory.map((file) => (
-                  <div 
-                    key={file.id} 
+                  <div
+                    key={file.id}
                     className="flex items-center justify-between p-2 rounded-md hover-elevate active-elevate-2"
                     data-testid={`file-${file.id}`}
                   >

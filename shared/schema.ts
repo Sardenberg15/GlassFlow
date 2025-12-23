@@ -23,6 +23,7 @@ export const projects = pgTable("projects", {
   type: text("type").notNull(), // vidro, espelho, reparo
   status: text("status").notNull().default("orcamento"), // orcamento, aprovado, execucao, finalizado, cancelado
   date: text("date").notNull(),
+  updatedAt: timestamp("updated_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -76,6 +77,7 @@ export const quoteItems = pgTable("quote_items", {
   unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
   total: decimal("total", { precision: 10, scale: 2 }).notNull(),
   imageUrl: text("image_url"), // URL da imagem/desenho do item
+  specifications: text("specifications"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
