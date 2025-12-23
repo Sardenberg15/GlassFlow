@@ -23,6 +23,6 @@ export const pool = new Pool({
   ssl: { rejectUnauthorized: false },
   max: 20, // Limit maximum connections
   idleTimeoutMillis: 30000, // Close idle connections after 30s
-  connectionTimeoutMillis: 2000, // Fail fast if connection cannot be established
+  connectionTimeoutMillis: 10000, // Increased to 10s to avoid timeouts in production
 });
 export const db = drizzle({ client: pool, schema });
