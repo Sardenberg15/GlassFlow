@@ -21,8 +21,27 @@ if (!process.env.DATABASE_URL && !usingMemory) {
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 20, // Limit maximum connections
-  idleTimeoutMillis: 30000, // Close idle connections after 30s
-  connectionTimeoutMillis: 10000, // Increased to 10s to avoid timeouts in production
+  max: 5, // Reduced from 20 to 5 to avoid MaxConnections limits on free tiers
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 10000, // 10s timeout
 });
+
+// Add detailed logging for debugging production connectivity
+pool.on('connect', () => {
+  console.log('Successfully acquired a client from the pool');
+});
+
+pool.on('error', (err) => {
+  console.error('Unexpected error on idle client', err);
+  process.exit(-1);
+});
+
+// Test connection on startup
+pool.query('SELECT NOW()')
+  .then((res) => {
+    console.log('Database connected successfully:', res.rows[0]);
+  })
+  .catch((err) => {
+    console.error('Database connection failed eagerly on startup:', err);
+  });
 export const db = drizzle({ client: pool, schema });
