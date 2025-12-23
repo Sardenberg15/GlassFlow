@@ -18,13 +18,23 @@ if (!process.env.DATABASE_URL && !usingMemory) {
   );
 }
 
+// Log the host to ensure we're connecting to the correct endpoint
+if (process.env.DATABASE_URL) {
+  try {
+    const url = new URL(process.env.DATABASE_URL);
+    console.log(`Attempting to connect to database host: ${url.host} with user: ${url.username}`);
+  } catch (e) {
+    console.error('Invalid DATABASE_URL formatting');
+  }
+}
+
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 5, // Keep low for free tier
-  idleTimeoutMillis: 0, // Disable idle timeout to keep connections open indefinitely
-  connectionTimeoutMillis: 10000, // 10s timeout
-  keepAlive: true, // Enable TCP keep-alive to prevent network dropouts
+  max: 5,
+  idleTimeoutMillis: 0,
+  connectionTimeoutMillis: 30000, // Increased to 30s for high-latency environments
+  keepAlive: true,
 });
 
 // Add detailed logging for debugging production connectivity
