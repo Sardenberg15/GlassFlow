@@ -1,5 +1,24 @@
-import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image, Svg, Path } from '@react-pdf/renderer';
 import type { Quote, QuoteItem, Client } from '@shared/schema';
+
+const PhoneIcon = () => (
+  <Svg width="10" height="10" viewBox="0 0 24 24">
+    <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.05 12.05 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.03 12.03 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" fill="#4B5563" />
+  </Svg>
+);
+
+const MailIcon = () => (
+  <Svg width="10" height="10" viewBox="0 0 24 24">
+    <Path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" fill="none" stroke="#4B5563" strokeWidth="2" />
+    <Path d="M22 6l-10 7L2 6" fill="none" stroke="#4B5563" strokeWidth="2" />
+  </Svg>
+);
+
+const BuildingIcon = () => (
+  <Svg width="10" height="10" viewBox="0 0 24 24">
+    <Path d="M4 21V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v15a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zm2-13v2h2V8H6zm0 4v2h2v-2H6zm0 4v2h2v-2H6zm4-8v2h4V8h-4zm0 4v2h4v-2h-4zm0 4v2h4v-2h-4zm6-8v2h2V8h-2zm0 4v2h2v-2h-2zm0 4v2h2v-2h-2z" fill="#4B5563" />
+  </Svg>
+);
 
 const styles = StyleSheet.create({
   page: {
@@ -10,10 +29,31 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 15,
-    borderBottom: '2 solid #000',
-    paddingBottom: 10,
+    marginBottom: 5,
+    paddingBottom: 0,
   },
+  contactBar: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    marginBottom: 15,
+    borderRadius: 4,
+    gap: 20,
+  },
+  contactGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  contactText: {
+    fontSize: 8,
+    color: '#374151',
+    fontWeight: 'medium',
+  },
+
   companyInfo: {
     fontSize: 8,
   },
@@ -24,6 +64,7 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     textAlign: 'right',
+    marginTop: 10,
   },
   itemContainer: {
     marginBottom: 15,
@@ -165,6 +206,28 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     width: 80,
   },
+  signatureSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 50,
+    marginBottom: 20,
+    paddingLeft: 20,
+    paddingRight: 20,
+  },
+  signatureBlock: {
+    width: '40%',
+    alignItems: 'center',
+  },
+  signatureLine: {
+    borderTop: '1 solid #000',
+    width: '100%',
+    marginBottom: 5,
+  },
+  signatureText: {
+    fontSize: 10,
+    textAlign: 'center',
+    fontStyle: 'italic', // Simulate handwriting style slightly, though standard fonts are limited
+  },
 });
 
 interface QuotePDFProps {
@@ -183,18 +246,47 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Header */}
+        {/* Top Header Section */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.title}>HelpGlass</Text>
-            <Text style={styles.companyInfo}>Soluções em Vidros e Espelhos</Text>
-            <Text style={styles.companyInfo}>Telefone: (22) 99821-3739</Text>
-            <Text style={styles.companyInfo}>Email: alpheu25@gmail.com</Text>
+            <Image
+              src="/logo-orcamento.png"
+              style={{ width: 170, height: 75, objectFit: 'contain' }}
+            />
           </View>
           <View style={styles.headerRight}>
-            <Text style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 3 }}>ORÇAMENTO</Text>
+            <Text style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 3 }}>PEDIDO</Text>
             <Text style={styles.companyInfo}>Nº {quote.number}</Text>
             <Text style={styles.companyInfo}>Data: {new Date(quote.createdAt).toLocaleDateString('pt-BR')}</Text>
             <Text style={styles.companyInfo}>Validade: {new Date(quote.validUntil).toLocaleDateString('pt-BR')}</Text>
+          </View>
+        </View>
+
+
+
+        {/* Modern Contact Bar with Icons */}
+        <View style={styles.contactBar}>
+          <View style={styles.contactGroup}>
+            <PhoneIcon />
+            <Text style={styles.contactText}>(22) 99821-3739</Text>
+          </View>
+
+          <View style={styles.contactGroup}>
+            <Text style={{ ...styles.contactText, fontSize: 10, color: '#CBD5E1' }}>|</Text>
+          </View>
+
+          <View style={styles.contactGroup}>
+            <BuildingIcon />
+            <Text style={styles.contactText}>62.481.085/0001-24</Text>
+          </View>
+
+          <View style={styles.contactGroup}>
+            <Text style={{ ...styles.contactText, fontSize: 10, color: '#CBD5E1' }}>|</Text>
+          </View>
+
+          <View style={styles.contactGroup}>
+            <MailIcon />
+            <Text style={styles.contactText}>alpheu25@gmail.com</Text>
           </View>
         </View>
 
@@ -241,31 +333,31 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
               {/* Image Section */}
               {item.imageUrl ? (
                 <View style={styles.imageSection}>
-                  <Image 
-                    src={item.imageUrl} 
+                  <Image
+                    src={item.imageUrl}
                     style={styles.itemImage}
                   />
                 </View>
               ) : null}
-              
+
               {/* Item Details */}
               <View style={styles.itemDetails}>
                 <Text style={styles.description}>{item.description}</Text>
-                
+
                 {item.profileColor ? (
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>*COR PERFIL:</Text>
                     <Text>{item.profileColor}</Text>
                   </View>
                 ) : null}
-                
+
                 {item.accessoryColor ? (
                   <View style={styles.detailRow}>
                     <Text style={styles.detailLabel}>*COR ACESSÓRIO:</Text>
                     <Text>{item.accessoryColor}</Text>
                   </View>
                 ) : null}
-                
+
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
                   {item.line ? (
                     <View style={styles.detailRow}>
@@ -345,10 +437,24 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={{ marginTop: 3 }}>A VALIDADE DO ORÇAMENTO: 05 DIAS ÚTEIS OU REPASSE DE NOVOS PREÇOS DE NOSSOS FORNECEDORES.</Text>
+          <Text style={{ marginBottom: 5 }}>A VALIDADE DO ORÇAMENTO: 05 DIAS ÚTEIS OU REPASSE DE NOVOS PREÇOS DE NOSSOS FORNECEDORES.</Text>
           <Text style={{ marginTop: 5, fontWeight: 'bold' }}>HelpGlass - Soluções em Vidros e Espelhos - (22) 99821-3739</Text>
         </View>
-        
+
+        {/* Signatures */}
+        <View style={styles.signatureSection}>
+          <View style={styles.signatureBlock}>
+            <View style={styles.signatureLine} />
+            <Text style={styles.signatureText}>Autorização do Cliente</Text>
+            <Text style={{ ...styles.signatureText, fontSize: 8, marginTop: 2 }}>{client.name}</Text>
+          </View>
+          <View style={styles.signatureBlock}>
+            <View style={styles.signatureLine} />
+            <Text style={styles.signatureText}>Alpheu Sardenberg</Text>
+            <Text style={{ ...styles.signatureText, fontSize: 8, marginTop: 2 }}>Representante Comercial</Text>
+          </View>
+        </View>
+
         {/* Page Number */}
         <Text
           style={styles.pageNumber}
