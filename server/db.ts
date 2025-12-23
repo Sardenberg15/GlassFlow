@@ -18,6 +18,16 @@ if (!process.env.DATABASE_URL && !usingMemory) {
   );
 }
 
+// Force IPv4 resolution to prevent frequent Render <-> Supabase IPv6 routing issues
+import dns from 'dns';
+try {
+  // Sets default lookup to favor IPv4
+  dns.setDefaultResultOrder('ipv4first');
+  console.log('DNS Resolution: Enforced ipv4first');
+} catch (e) {
+  console.warn('Could not set default result order for DNS (Node version might be old)');
+}
+
 // Log the host to ensure we're connecting to the correct endpoint
 if (process.env.DATABASE_URL) {
   try {
@@ -32,8 +42,8 @@ export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
   max: 10,
-  idleTimeoutMillis: 0, // Disable idle timeout. CRITICAL: Keeps TCP connection open to avoid slow SSL handshakes.
-  connectionTimeoutMillis: 60000, // 60s timeout to survive massive latency spikes
+  idleTimeoutMillis: 0,
+  connectionTimeoutMillis: 10000, // Reverting to 10s as 60s is too long to wait for a fail
   keepAlive: true,
 });
 
