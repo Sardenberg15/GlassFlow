@@ -31,9 +31,9 @@ if (process.env.DATABASE_URL) {
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
-  max: 5,
-  idleTimeoutMillis: 0,
-  connectionTimeoutMillis: 30000, // Increased to 30s for high-latency environments
+  max: 10,
+  idleTimeoutMillis: 0, // Disable idle timeout. CRITICAL: Keeps TCP connection open to avoid slow SSL handshakes.
+  connectionTimeoutMillis: 60000, // 60s timeout to survive massive latency spikes
   keepAlive: true,
 });
 
