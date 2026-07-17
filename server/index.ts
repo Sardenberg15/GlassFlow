@@ -5,6 +5,9 @@ import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
 
+// Health check do Render — precisa responder 200 sem autenticação
+app.get("/healthz", (_req, res) => res.status(200).send("ok"));
+
 // Proteção por senha (HTTP Basic Auth) — ativa apenas quando APP_PASSWORD está
 // definida (produção). Sem ela (dev local), nada muda.
 const APP_USER = process.env.APP_USER || "sardenberg";
