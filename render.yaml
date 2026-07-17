@@ -1,16 +1,21 @@
 services:
   - type: web
     name: glassflowpro
-    env: node
-    plan: free
+    runtime: node
+    plan: free # troque para "starter" (US$ 7/mês) para ficar sempre ligado, sem hibernar
     branch: main
     autoDeploy: true
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci && npm run build
     startCommand: npm run start
+    healthCheckPath: /
     envVars:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
-        # Defina no dashboard com a string do Supabase
+        sync: false # cole o valor no painel do Render (mesma string do seu .env)
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
       - key: SESSION_SECRET
         generateValue: true

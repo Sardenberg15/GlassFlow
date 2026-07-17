@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { ArrowDownCircle, ArrowUpCircle, Upload, FileText, Trash2, Download, FileDown, Calendar, Settings } from "lucide-react";
+import { ArrowDownCircle, ArrowUpCircle, Upload, FileText, Trash2, Download, FileDown, Calendar, Settings, PieChart } from "lucide-react";
 import { ObjectUploader } from "@/components/ObjectUploader";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -16,7 +16,8 @@ import { Input } from "@/components/ui/input";
 import { RelatorioObraPDF, RelatorioObraPDFDownload } from "@/components/relatorio-obra-pdf";
 import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
 import type { UploadResult } from "@uppy/core";
-import type { ProjectFile, Transaction } from "@shared/schema";
+import type { ProjectFile, Transaction, Category } from "@shared/schema";
+import { Pie, Cell, PieChart as RechartsPieChart, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from "recharts";
 
 interface CartaoObrasProps {
   projectId: string;
@@ -58,6 +59,25 @@ export function CartaoObras({ projectId, projectName, clientId, transactions }: 
 
   const receitas = transactions.filter(t => t.type === "receita");
   const despesas = transactions.filter(t => t.type === "despesa");
+
+  const { data: categories = [] } = useQuery<Category[]>({
+    queryKey: ["/api/categories"],
+  });
+
+  const expensesByCategory = despesas.reduce((acc, t) => {
+    const catId = t.categoryId || "uncategorized";
+    acc[catId] = (acc[catId] || 0) + parseFloat(String(t.value));
+    return acc;
+  }, {} as Record<string, number>);
+
+  const expensesChartData = Object.entries(expensesByCategory).map(([catId, value]) => {
+    const category = categories.find(c => c.id === catId);
+    return {
+      name: category?.name || "Sem Categoria",
+      value,
+      color: category?.color || "#94a3b8"
+    };
+  }).sort((a, b) => b.value - a.value);
 
   const totalReceitas = receitas.reduce((sum, t) => sum + parseFloat(String(t.value)), 0);
   const totalDespesas = despesas.reduce((sum, t) => sum + parseFloat(String(t.value)), 0);
@@ -382,6 +402,59 @@ export function CartaoObras({ projectId, projectName, clientId, transactions }: 
           <span className={`text-2xl font-bold ${saldo >= 0 ? 'text-chart-2' : 'text-chart-4'}`} data-testid="saldo-projeto">
             {formatCurrency(saldo)}
           </span>
+        </div>
+
+        <Separator />
+
+        {/* Despesas por Categoria Chart */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <PieChart className="h-5 w-5 text-muted-foreground" />
+            <h3 className="font-semibold">Despesas por Categoria</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+            <div className="h-[200px] w-full">
+              {expensesChartData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <RechartsPieChart>
+                    <Pie
+                      data={expensesChartData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={80}
+                      paddingAngle={5}
+                      dataKey="value"
+                    >
+                      {expensesChartData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip
+                      formatter={(value: number) => formatCurrency(value)}
+                    />
+                  </RechartsPieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                  Sem dados de despesas
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {expensesChartData.map((item, index) => (
+                <div key={index} className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                    <span>{item.name}</span>
+                  </div>
+                  <span className="font-medium">{formatCurrency(item.value)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         <Separator />

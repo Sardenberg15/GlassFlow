@@ -150,11 +150,11 @@ export default function Clientes() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 animate-fade-in">
+      <div className="page-header flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Clientes</h1>
-          <p className="text-muted-foreground">Gerencie sua base de clientes</p>
+          <h1>Clientes</h1>
+          <p>Gerencie sua base de clientes</p>
         </div>
         <Dialog open={open} onOpenChange={(isOpen) => {
           setOpen(isOpen);

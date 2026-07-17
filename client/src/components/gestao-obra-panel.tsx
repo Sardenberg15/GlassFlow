@@ -246,30 +246,32 @@ export function GestaoObraPanel({ project, onAddReceita, onAddDespesa, projectFi
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead>Data</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {receitas.length > 0 ? (
-                receitas.map(r => (
-                  <TableRow key={r.id}>
-                    <TableCell className="max-w-[400px] truncate">{r.description}</TableCell>
-                    <TableCell className="font-semibold">{formatCurrency(r.value)}</TableCell>
-                    <TableCell>{r.date}</TableCell>
-                  </TableRow>
-                ))
-              ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={3} className="text-muted-foreground">Nenhum recebimento registrado</TableCell>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead>Valor</TableHead>
+                  <TableHead>Data</TableHead>
                 </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {receitas.length > 0 ? (
+                  receitas.map(r => (
+                    <TableRow key={r.id}>
+                      <TableCell className="max-w-[400px] truncate">{r.description}</TableCell>
+                      <TableCell className="font-semibold">{formatCurrency(r.value)}</TableCell>
+                      <TableCell>{r.date}</TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={3} className="text-muted-foreground">Nenhum recebimento registrado</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -284,22 +286,24 @@ export function GestaoObraPanel({ project, onAddReceita, onAddDespesa, projectFi
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Real</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Object.entries(despesasAgrupadas).map(([categoria, valor]) => (
-                <TableRow key={categoria}>
-                  <TableCell>{categoria}</TableCell>
-                  <TableCell className="font-semibold">{formatCurrency(valor)}</TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead>Real</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {Object.entries(despesasAgrupadas).map(([categoria, valor]) => (
+                  <TableRow key={categoria}>
+                    <TableCell>{categoria}</TableCell>
+                    <TableCell className="font-semibold">{formatCurrency(valor)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

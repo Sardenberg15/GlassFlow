@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 type ProjectStatus = "orcamento" | "aprovado" | "execucao" | "finalizado" | "cancelado";
 
 interface ProjectStatusBadgeProps {
-  status: ProjectStatus;
+  status: string;
 }
 
 const statusConfig = {
@@ -15,10 +15,13 @@ const statusConfig = {
 };
 
 export function ProjectStatusBadge({ status }: ProjectStatusBadgeProps) {
-  const config = statusConfig[status];
-  
+  const config = statusConfig[status as ProjectStatus] || {
+    label: status ? status.charAt(0).toUpperCase() + status.slice(1) : "Desconhecido",
+    className: "bg-gray-100 text-gray-800",
+  };
+
   return (
-    <Badge variant="secondary" className={config.className} data-testid={`badge-status-${status}`}>
+    <Badge variant="secondary" className={config.className}>
       {config.label}
     </Badge>
   );

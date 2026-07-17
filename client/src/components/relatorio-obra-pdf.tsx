@@ -4,6 +4,10 @@ import { ptBR } from 'date-fns/locale';
 import type { Transaction, ProjectFile } from '@shared/schema';
 import { logoBase64 } from './logo-base64';
 
+interface TransactionWithCategory extends Transaction {
+  category?: string;
+}
+
 interface RelatorioObraPDFProps {
   project: {
     id: string;
@@ -16,7 +20,7 @@ interface RelatorioObraPDFProps {
     endDate?: string;
     responsible?: string;
   };
-  transactions: Transaction[];
+  transactions: TransactionWithCategory[];
   projectFiles: ProjectFile[];
   reportType: 'detailed' | 'summary';
   reportPeriod: {

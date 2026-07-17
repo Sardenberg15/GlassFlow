@@ -106,25 +106,64 @@ export class ObjectStorageService {
   }
 
   normalizeObjectEntityPath(rawPath: string): string {
-    // If the client sends the full signed URL, we might want to extract the path.
-    // Supabase signed URLs contain the path.
-    // But for simplicity, we'll assume the client might send the path or we just return it as is if it's not a known URL format.
-    // If it's a URL, we try to extract the last part.
+    // If the client sends the full signed URL, we extract the relevant path.
 
     if (rawPath.startsWith("http")) {
       try {
         const url = new URL(rawPath);
-        // Try to find the object ID from the path
-        // Supabase URL: .../storage/v1/object/upload/sign/uploads/uuid?...
-        const parts = url.pathname.split('/');
+        const pathname = url.pathname;
+
+        // Local upload URLs: /objects/uploads/<uuid>
+        if (pathname.includes("/objects/uploads/")) {
+          const match = pathname.match(/\/objects\/uploads\/([^/?]+)/);
+          if (match) {
+            return `/objects/uploads/${match[1]}`;
+          }
+        }
+
+        // Supabase signed URLs: .../storage/v1/object/upload/sign/<bucket>/<path>?...
+        // Extract bucket and file path
+        const supabaseMatch = pathname.match(/\/storage\/v1\/object\/(?:upload\/sign|public)\/(.+)/);
+        if (supabaseMatch) {
+          return `/objects/${supabaseMatch[1]}`;
+        }
+
+        // Fallback: use the pathname if it starts with /objects/
+        if (pathname.startsWith("/objects/")) {
+          return pathname;
+        }
+
+        // Last resort: extract last segment
+        const parts = pathname.split('/');
         const uuid = parts[parts.length - 1];
         if (uuid) {
-          return `/objects/${uuid}`;
+          return `/objects/uploads/${uuid}`;
         }
       } catch {
         // ignore
       }
     }
+
+    // Handle raw pathnames (not full URLs)
+    // e.g. /storage/v1/object/upload/sign/uploads/<uuid>
+    if (rawPath.startsWith("/storage/")) {
+      const supabaseMatch = rawPath.match(/\/storage\/v1\/object\/(?:upload\/sign|public)\/uploads\/([^/?]+)/);
+      if (supabaseMatch) {
+        return `/objects/uploads/${supabaseMatch[1]}`;
+      }
+      // Generic fallback: extract last segment
+      const parts = rawPath.split('/');
+      const uuid = parts[parts.length - 1];
+      if (uuid) {
+        return `/objects/uploads/${uuid}`;
+      }
+    }
+
+    // Already a proper /objects/ path
+    if (rawPath.startsWith("/objects/")) {
+      return rawPath;
+    }
+
     return rawPath;
   }
 }

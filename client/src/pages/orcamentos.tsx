@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -6,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Search, FileText, Download, Trash2, Eye, Image as ImageIcon, Upload, Pencil, MoreHorizontal } from "lucide-react";
-import { PDFDownloadLink } from '@react-pdf/renderer';
+import { Plus, Search, FileText, Download, Trash2, Eye, Image as ImageIcon, Upload, Pencil, MoreHorizontal, Copy, Ruler } from "lucide-react";
+import { PDFDownloadLink, pdf } from '@react-pdf/renderer';
+import { saveAs } from 'file-saver';
 import { QuotePDF } from "@/components/quote-pdf";
 import {
   Select,
@@ -51,8 +53,11 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import PageHeader from "@/components/layout/page-header";
+import { useTypologies, useAllTypologyMaterials, useAluminumProfiles } from "@/hooks/use-esquadrias";
+import { Parser } from 'expr-eval';
 
 export default function Orcamentos() {
+  const [, setLocation] = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"todos" | "pendente" | "aprovado" | "recusado">("todos");
   const [sortBy, setSortBy] = useState<"data" | "validade" | "valor">("data");
@@ -70,10 +75,17 @@ export default function Orcamentos() {
     line?: string;
     deliveryDate?: string;
     itemObservations?: string;
+    environment?: string;
     unitPrice: string;
     imageUrl?: string;
+    typologyId?: string;
+    calculatedMaterials?: any;
+    aluminumPrice?: string;
+    glassPrice?: string;
+    accessoriesPrice?: string;
+    profitMargin?: string;
   }>>([
-    { description: "", quantity: "1", unitPrice: "0" }
+    { description: "", quantity: "1", unitPrice: "0", aluminumPrice: "0", glassPrice: "0", accessoriesPrice: "0", profitMargin: "0" }
   ]);
   const [uploadingImage, setUploadingImage] = useState<number | null>(null);
   const [discount, setDiscount] = useState<string>("0");
@@ -93,6 +105,11 @@ export default function Orcamentos() {
   const { data: allItems = [], isLoading: itemsLoading } = useQuery<QuoteItem[]>({
     queryKey: ["/api/quote-items"],
   });
+
+  // Fetch typologies and materials for calculation
+  const { data: typologies = [] } = useTypologies();
+  const { data: allTypologyMaterials = [] } = useAllTypologyMaterials();
+  const { data: aluminumProfiles = [] } = useAluminumProfiles();
 
   // Get items for selected quote
   const selectedQuoteItems = selectedQuote
@@ -173,9 +190,20 @@ export default function Orcamentos() {
             line: item.line || null,
             deliveryDate: item.deliveryDate || null,
             itemObservations: item.itemObservations || null,
+            environment: item.environment || null,
+            typologyId: item.typologyId || null,
             unitPrice: item.unitPrice,
             total: total.toString(),
-            imageUrl: item.imageUrl || null,
+            // Keep the raw stringified configuration inside calculated materials for historical records
+            calculatedMaterials: item.calculatedMaterials ? {
+              materials: item.calculatedMaterials,
+              costs: {
+                aluminumPricePerKg: item.aluminumPrice || "0",
+                glassPricePerSqm: item.glassPrice || "0",
+                accessoriesPrice: item.accessoriesPrice || "0",
+                profitMargin: item.profitMargin || "0"
+              }
+            } : null,
           });
         }
       }
@@ -239,6 +267,29 @@ export default function Orcamentos() {
     },
   });
 
+  // Duplicate quote mutation
+  const duplicateQuoteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/quotes/${id}/duplicate`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quotes"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/quote-items"] });
+      toast({
+        title: "Orçamento duplicado!",
+        description: "Uma cópia do orçamento foi criada com sucesso.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Erro ao duplicar orçamento",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Update quote mutation
   const updateQuoteMutation = useMutation({
     mutationFn: async (data: FormData) => {
@@ -284,9 +335,20 @@ export default function Orcamentos() {
             line: item.line || null,
             deliveryDate: item.deliveryDate || null,
             itemObservations: item.itemObservations || null,
+            environment: item.environment || null,
+            typologyId: item.typologyId || null,
             unitPrice: item.unitPrice,
             total: total.toString(),
             imageUrl: item.imageUrl || null,
+            calculatedMaterials: item.calculatedMaterials ? {
+              materials: item.calculatedMaterials,
+              costs: {
+                aluminumPricePerKg: item.aluminumPrice || "0",
+                glassPricePerSqm: item.glassPrice || "0",
+                accessoriesPrice: item.accessoriesPrice || "0",
+                profitMargin: item.profitMargin || "0"
+              }
+            } : null,
           });
         }
       }
@@ -302,7 +364,7 @@ export default function Orcamentos() {
       });
       setOpenNew(false);
       setEditingQuote(null);
-      setQuoteItems([{ description: "", quantity: "1", unitPrice: "0" }]);
+      setQuoteItems([{ description: "", quantity: "1", unitPrice: "0", aluminumPrice: "0", glassPrice: "0", accessoriesPrice: "0", profitMargin: "0" }]);
       setDiscount("0");
     },
     onError: (error: Error) => {
@@ -332,9 +394,82 @@ export default function Orcamentos() {
     setQuoteItems(quoteItems.filter((_, i) => i !== index));
   };
 
+  const calculateTypologyMaterials = (typologyId: string, width: string, height: string) => {
+    if (!typologyId || !width || !height) return null;
+    const w = parseFloat(width);
+    const h = parseFloat(height);
+    if (isNaN(w) || isNaN(h)) return null;
+
+    const materials = allTypologyMaterials.filter(m => m.typologyId === typologyId);
+
+    return materials.map(mat => {
+      const profile = aluminumProfiles.find(p => p.id === mat.profileId);
+      let calculatedSize = 0;
+      let calculatedQuantity = 0;
+      try {
+        const parser = new Parser();
+        calculatedSize = parser.evaluate(mat.formula, { L: w, H: h });
+        calculatedQuantity = parser.parse(mat.quantityFormula || "1").evaluate({ L: w, H: h });
+      } catch (e) {
+        console.error("Formula error", e);
+      }
+
+      const weightPerMeter = profile ? parseFloat(String(profile.weightPerMeter)) : 0;
+      const totalWeight = (calculatedSize / 1000) * calculatedQuantity * weightPerMeter;
+
+      return {
+        ...mat,
+        profile,
+        calculatedSize,
+        calculatedQuantity,
+        totalWeight
+      };
+    });
+  };
+
   const updateItem = (index: number, field: string, value: string) => {
     const updated = [...quoteItems];
     updated[index] = { ...updated[index], [field]: value };
+
+    // Auto-calculate materials and prices if dimensions or typology changes
+    if (['width', 'height', 'typologyId', 'aluminumPrice', 'glassPrice', 'accessoriesPrice', 'profitMargin'].includes(field)) {
+      const item = updated[index];
+      if (item.typologyId) {
+        const calc = calculateTypologyMaterials(item.typologyId, item.width || "", item.height || "");
+        updated[index].calculatedMaterials = calc;
+
+        // Calculate Unit Price
+        if (calc) {
+          const totalKg = calc.reduce((acc: number, cur: any) => acc + (cur.totalWeight || 0), 0);
+          const aluminumCost = totalKg * parseFloat(item.aluminumPrice || "0");
+
+          // Basic glass Area: (L/1000) * (H/1000)
+          const wM = parseFloat(item.width || "0") / 1000;
+          const hM = parseFloat(item.height || "0") / 1000;
+          const glassArea = wM * hM;
+          const glassCost = glassArea * parseFloat(item.glassPrice || "0");
+
+          const accessoriesCost = parseFloat(item.accessoriesPrice || "0");
+          const rawCost = aluminumCost + glassCost + accessoriesCost;
+
+          const profit = parseFloat(item.profitMargin || "0");
+          const finalPrice = rawCost / (1 - (profit / 100)); // Markup formulation
+
+          updated[index].unitPrice = isNaN(finalPrice) || !isFinite(finalPrice) ? "0" : finalPrice.toFixed(2);
+        }
+      } else {
+        updated[index].calculatedMaterials = null;
+      }
+    }
+
+    // Auto-fill description when typology is selected
+    if (field === 'typologyId' && value) {
+      const tipologia = typologies.find(t => t.id === value);
+      if (tipologia && !updated[index].description) {
+        updated[index].description = tipologia.name;
+      }
+    }
+
     setQuoteItems(updated);
   };
 
@@ -422,11 +557,18 @@ export default function Orcamentos() {
         line: item.line || "",
         deliveryDate: item.deliveryDate || "",
         itemObservations: item.itemObservations || "",
+        environment: item.environment || "",
         unitPrice: item.unitPrice,
         imageUrl: item.imageUrl || "",
+        typologyId: item.typologyId || "",
+        calculatedMaterials: (item.calculatedMaterials as any)?.materials || null,
+        aluminumPrice: (item.calculatedMaterials as any)?.costs?.aluminumPricePerKg || "0",
+        glassPrice: (item.calculatedMaterials as any)?.costs?.glassPricePerSqm || "0",
+        accessoriesPrice: (item.calculatedMaterials as any)?.costs?.accessoriesPrice || "0",
+        profitMargin: (item.calculatedMaterials as any)?.costs?.profitMargin || "0",
       })));
     } else {
-      setQuoteItems([{ description: "", quantity: "1", unitPrice: "0" }]);
+      setQuoteItems([{ description: "", quantity: "1", unitPrice: "0", aluminumPrice: "0", glassPrice: "0", accessoriesPrice: "0", profitMargin: "0" }]);
     }
 
     setOpenNew(true);
@@ -450,6 +592,31 @@ export default function Orcamentos() {
     <div className="space-y-6">
       {/* Header */}
       <PageHeader title="Orçamentos" subtitle="Crie e gerencie orçamentos para clientes">
+        <div className="flex gap-2">
+          <Button
+            data-testid="button-new-quote"
+            className="rounded-full"
+            onClick={() => setLocation('/orcamentos/novo')}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Novo Orçamento (Wizard)
+          </Button>
+
+          <Button
+            data-testid="button-new-express-quote"
+            variant="outline"
+            className="rounded-full"
+            onClick={() => {
+              setEditingQuote(null);
+              setQuoteItems([{ description: "", quantity: "1", unitPrice: "0" }]);
+              setDiscount("0");
+              setOpenNew(true);
+            }}
+          >
+            Avulso / Express
+          </Button>
+        </div>
+
         <Dialog open={openNew} onOpenChange={(open) => {
           setOpenNew(open);
           if (!open) {
@@ -458,12 +625,6 @@ export default function Orcamentos() {
             setDiscount("0");
           }
         }}>
-          <DialogTrigger asChild>
-            <Button data-testid="button-new-quote" className="rounded-full">
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Orçamento
-            </Button>
-          </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>{editingQuote ? 'Editar Orçamento' : 'Criar Novo Orçamento'}</DialogTitle>
@@ -547,6 +708,33 @@ export default function Orcamentos() {
                     <div className="flex items-start gap-4">
                       <div className="flex-1 space-y-4">
                         <div className="grid grid-cols-3 gap-3">
+                          <div className="col-span-3">
+                            <Label htmlFor={`env-${index}`}>Local/Ambiente</Label>
+                            <Input
+                              id={`env-${index}`}
+                              placeholder="Ex: Sala de Estar, Cozinha..."
+                              value={item.environment || ""}
+                              onChange={(e) => updateItem(index, 'environment', e.target.value)}
+                              data-testid={`input-item-env-${index}`}
+                            />
+                          </div>
+                          <div className="col-span-3">
+                            <Label htmlFor={`typology-${index}`}>Tipologia (Modelo Base)</Label>
+                            <Select
+                              value={item.typologyId || "livre"}
+                              onValueChange={(val) => updateItem(index, 'typologyId', val === "livre" ? "" : val)}
+                            >
+                              <SelectTrigger id={`typology-${index}`}>
+                                <SelectValue placeholder="Item Livre (Sem cálculo automático)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="livre">Item Livre (Sem cálculo automático)</SelectItem>
+                                {typologies.map(t => (
+                                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                           <div className="col-span-3">
                             <Label htmlFor={`desc-${index}`}>Descrição do Item *</Label>
                             <Input
@@ -657,6 +845,98 @@ export default function Orcamentos() {
                               {formatCurrency(parseFloat(item.quantity || "0") * parseFloat(item.unitPrice || "0"))}
                             </div>
                           </div>
+
+                          {item.calculatedMaterials && item.calculatedMaterials.length > 0 && (
+                            <div className="col-span-3 mt-2 border rounded-md p-3 bg-white dark:bg-zinc-950 shadow-sm space-y-4">
+                              <h5 className="text-xs font-semibold flex items-center gap-2 text-primary">
+                                <Ruler className="h-3.5 w-3.5" />
+                                Memória de Cálculo (Automático)
+                              </h5>
+                              <div className="grid grid-cols-4 gap-4 bg-muted/30 p-3 rounded-md border">
+                                <div>
+                                  <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Alumínio Base/Kg</Label>
+                                  <div className="flex items-center gap-1 mt-1">
+                                    <span className="text-xs text-muted-foreground">R$</span>
+                                    <Input
+                                      className="h-7 text-xs font-mono bg-white dark:bg-zinc-900"
+                                      value={item.aluminumPrice || ""}
+                                      onChange={e => updateItem(index, 'aluminumPrice', e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <div>
+                                  <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Vidro/m²</Label>
+                                  <div className="flex items-center gap-1 mt-1">
+                                    <span className="text-xs text-muted-foreground">R$</span>
+                                    <Input
+                                      className="h-7 text-xs font-mono bg-white dark:bg-zinc-900"
+                                      value={item.glassPrice || ""}
+                                      onChange={e => updateItem(index, 'glassPrice', e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <div>
+                                  <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Acessórios (Total)</Label>
+                                  <div className="flex items-center gap-1 mt-1">
+                                    <span className="text-xs text-muted-foreground">R$</span>
+                                    <Input
+                                      className="h-7 text-xs font-mono bg-white dark:bg-zinc-900"
+                                      value={item.accessoriesPrice || ""}
+                                      onChange={e => updateItem(index, 'accessoriesPrice', e.target.value)}
+                                    />
+                                  </div>
+                                </div>
+                                <div>
+                                  <Label className="text-[10px] text-muted-foreground uppercase tracking-wider">Margem de Lucro</Label>
+                                  <div className="flex items-center gap-1 mt-1">
+                                    <Input
+                                      className="h-7 text-xs font-mono bg-white dark:bg-zinc-900"
+                                      value={item.profitMargin || ""}
+                                      onChange={e => updateItem(index, 'profitMargin', e.target.value)}
+                                    />
+                                    <span className="text-xs font-medium">%</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="border rounded overflow-hidden">
+                                <Table>
+                                  <TableHeader>
+                                    <TableRow className="h-8">
+                                      <TableHead className="text-[10px] p-2">Perfil</TableHead>
+                                      <TableHead className="text-[10px] p-2">Corte (mm)</TableHead>
+                                      <TableHead className="text-[10px] p-2 text-right">Qtd.</TableHead>
+                                      <TableHead className="text-[10px] p-2 text-right">Peso (kg)</TableHead>
+                                    </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                    {item.calculatedMaterials.map((mat: any, i: number) => (
+                                      <TableRow key={i} className="h-8">
+                                        <TableCell className="text-[10px] p-2 font-medium">
+                                          {mat.profile?.code}
+                                        </TableCell>
+                                        <TableCell className="text-[10px] p-2 text-blue-600 font-mono">
+                                          {mat.calculatedSize.toFixed(1)}
+                                        </TableCell>
+                                        <TableCell className="text-[10px] p-2 text-right">
+                                          {mat.calculatedQuantity}
+                                        </TableCell>
+                                        <TableCell className="text-[10px] p-2 text-right text-muted-foreground">
+                                          {mat.totalWeight.toFixed(2)}
+                                        </TableCell>
+                                      </TableRow>
+                                    ))}
+                                    <TableRow className="bg-muted/30">
+                                      <TableCell colSpan={3} className="text-[10px] p-2 font-semibold text-right">Peso Total de Alumínio:</TableCell>
+                                      <TableCell className="text-[10px] p-2 font-bold text-right">
+                                        {item.calculatedMaterials.reduce((acc: number, cur: any) => acc + (cur.totalWeight || 0), 0).toFixed(2)} kg
+                                      </TableCell>
+                                    </TableRow>
+                                  </TableBody>
+                                </Table>
+                              </div>
+                            </div>
+                          )}
+
                           <div className="col-span-3">
                             <Label htmlFor={`obs-${index}`}>Observações do Item</Label>
                             <Textarea
@@ -863,118 +1143,134 @@ export default function Orcamentos() {
             <CardTitle>Orçamentos Criados</CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Número</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Data</TableHead>
-                  <TableHead>Valor</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredQuotes.map(quote => {
-                  const client = clients.find(c => c.id === quote.clientId);
-                  const items = allItems.filter(item => item.quoteId === quote.id);
-                  const subtotal = items.reduce((sum, item) => sum + parseFloat(String(item.total)), 0);
-                  const disc = parseFloat(String(quote.discount || "0"));
-                  const total = subtotal - (subtotal * disc) / 100;
-                  const dateStr = quote.createdAt ? new Date(quote.createdAt).toLocaleDateString('pt-BR') : new Date(quote.validUntil).toLocaleDateString('pt-BR');
-                  return (
-                    <TableRow key={quote.id} data-testid={`row-quote-${quote.id}`} className="hover:bg-muted/30">
-                      <TableCell className="font-medium">{quote.number}</TableCell>
-                      <TableCell>{client?.name}</TableCell>
-                      <TableCell>{dateStr}</TableCell>
-                      <TableCell className="font-mono">{formatCurrency(total)}</TableCell>
-                      <TableCell>{getStatusBadge(quote.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <TooltipProvider>
-                          <div className="flex items-center justify-end gap-2">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="icon"
-                                  onClick={() => setSelectedQuote(quote)}
-                                  data-testid={`button-view-quote-${quote.id}`}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Visualizar</TooltipContent>
-                            </Tooltip>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Número</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredQuotes.map(quote => {
+                    const client = clients.find(c => c.id === quote.clientId);
+                    const items = allItems.filter(item => item.quoteId === quote.id);
+                    const subtotal = items.reduce((sum, item) => sum + parseFloat(String(item.total)), 0);
+                    const disc = parseFloat(String(quote.discount || "0"));
+                    const total = subtotal - (subtotal * disc) / 100;
+                    const dateStr = quote.createdAt ? new Date(quote.createdAt).toLocaleDateString('pt-BR') : new Date(quote.validUntil).toLocaleDateString('pt-BR');
+                    return (
+                      <TableRow key={quote.id} data-testid={`row-quote-${quote.id}`} className="hover:bg-muted/30">
+                        <TableCell className="font-medium">{quote.number}</TableCell>
+                        <TableCell>{client?.name}</TableCell>
+                        <TableCell>{dateStr}</TableCell>
+                        <TableCell className="font-mono">{formatCurrency(total)}</TableCell>
+                        <TableCell>{getStatusBadge(quote.status)}</TableCell>
+                        <TableCell className="text-right">
+                          <TooltipProvider>
+                            <div className="flex items-center justify-end gap-2">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="icon"
+                                    onClick={() => setSelectedQuote(quote)}
+                                    data-testid={`button-view-quote-${quote.id}`}
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Visualizar</TooltipContent>
+                              </Tooltip>
 
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" aria-label="Mais ações" className="rounded-full">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleEditQuote(quote)} disabled={itemsLoading}>
-                                  <Pencil className="h-4 w-4" /> Editar
-                                </DropdownMenuItem>
-                                {client && items.length > 0 && (
-                                  <DropdownMenuItem asChild>
-                                    <PDFDownloadLink
-                                      document={<QuotePDF quote={quote} client={client} items={items} />}
-                                      fileName={`${quote.number}.pdf`}
-                                    >
-                                      {({ loading }) => (
-                                        <span className={`flex items-center gap-2 ${loading ? 'opacity-60' : ''}`}>
-                                          <Download className="h-4 w-4" /> {loading ? 'Gerando...' : 'Baixar PDF'}
-                                        </span>
-                                      )}
-                                    </PDFDownloadLink>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" aria-label="Mais ações" className="rounded-full">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => handleEditQuote(quote)} disabled={itemsLoading}>
+                                    <Pencil className="h-4 w-4" /> Editar
                                   </DropdownMenuItem>
-                                )}
-                                {quote.status === 'pendente' && (
-                                  <>
-                                    <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: quote.id, status: 'aprovado' })}>
-                                      ✅ Aprovar
+                                  {client && items.length > 0 && (
+                                    <DropdownMenuItem
+                                      onClick={async (e) => {
+                                        e.preventDefault();
+                                        try {
+                                          const blob = await pdf(<QuotePDF quote={quote} client={client} items={items} />).toBlob();
+                                          const cleanNumber = quote.number ? quote.number.replace(/[^a-zA-Z0-9-_]/g, '-') : 'orcamento';
+                                          saveAs(blob, `${cleanNumber}.pdf`);
+                                          toast({ title: "PDF baixado com sucesso!" });
+                                        } catch (error) {
+                                          console.error("Erro ao gerar PDF:", error);
+                                          toast({
+                                            title: "Erro ao gerar PDF",
+                                            description: "Não foi possível criar o arquivo. Verifique se o logo está acessível.",
+                                            variant: "destructive"
+                                          });
+                                        }
+                                      }}
+                                    >
+                                      <Download className="h-4 w-4" /> Baixar PDF
                                     </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: quote.id, status: 'recusado' })}>
-                                      ❌ Recusar
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <DropdownMenuItem className="text-destructive" data-testid={`button-delete-quote-${quote.id}`}>
-                                      <Trash2 className="h-4 w-4" /> Excluir
-                                    </DropdownMenuItem>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Excluir orçamento?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        Esta ação não pode ser desfeita. O orçamento "{quote.number}" será permanentemente removido do sistema.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel data-testid="button-cancel-delete">Cancelar</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        onClick={() => deleteQuoteMutation.mutate(quote.id)}
-                                        data-testid="button-confirm-delete"
-                                        className="bg-destructive hover:bg-destructive/90"
-                                      >
-                                        Excluir
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TooltipProvider>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+                                  )}
+                                  <DropdownMenuItem onClick={() => setLocation(`/orcamentos/${quote.id}/editor`)}>
+                                    <FileText className="h-4 w-4" /> Editar Documento
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => duplicateQuoteMutation.mutate(quote.id)} disabled={duplicateQuoteMutation.isPending}>
+                                    <Copy className="h-4 w-4" /> Duplicar
+                                  </DropdownMenuItem>
+                                  {quote.status === 'pendente' && (
+                                    <>
+                                      <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: quote.id, status: 'aprovado' })}>
+                                        ✅ Aprovar
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => updateStatusMutation.mutate({ id: quote.id, status: 'recusado' })}>
+                                        ❌ Recusar
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <DropdownMenuItem className="text-destructive" data-testid={`button-delete-quote-${quote.id}`}>
+                                        <Trash2 className="h-4 w-4" /> Excluir
+                                      </DropdownMenuItem>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Excluir orçamento?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Esta ação não pode ser desfeita. O orçamento "{quote.number}" será permanentemente removido do sistema.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel data-testid="button-cancel-delete">Cancelar</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => deleteQuoteMutation.mutate(quote.id)}
+                                          data-testid="button-confirm-delete"
+                                          className="bg-destructive hover:bg-destructive/90"
+                                        >
+                                          Excluir
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TooltipProvider>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       )}
@@ -1023,26 +1319,28 @@ export default function Orcamentos() {
 
               <div>
                 <h3 className="font-semibold mb-2">Itens</h3>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Descrição</TableHead>
-                      <TableHead>Qtd.</TableHead>
-                      <TableHead>Valor Unit.</TableHead>
-                      <TableHead>Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedQuoteItems.map(item => (
-                      <TableRow key={item.id}>
-                        <TableCell>{item.description}</TableCell>
-                        <TableCell>{parseFloat(String(item.quantity)).toFixed(2)}</TableCell>
-                        <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
-                        <TableCell className="font-mono">{formatCurrency(item.total)}</TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead>Qtd.</TableHead>
+                        <TableHead>Valor Unit.</TableHead>
+                        <TableHead>Total</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedQuoteItems.map(item => (
+                        <TableRow key={item.id}>
+                          <TableCell>{item.description}</TableCell>
+                          <TableCell>{parseFloat(String(item.quantity)).toFixed(2)}</TableCell>
+                          <TableCell>{formatCurrency(item.unitPrice)}</TableCell>
+                          <TableCell className="font-mono">{formatCurrency(item.total)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
                 <div className="text-right mt-4 space-y-1">
                   {(() => {
                     const subtotal = selectedQuoteItems.reduce((sum, item) => sum + parseFloat(String(item.total)), 0);

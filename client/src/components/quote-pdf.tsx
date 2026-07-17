@@ -22,211 +22,222 @@ const BuildingIcon = () => (
 
 const styles = StyleSheet.create({
   page: {
-    padding: 30,
+    padding: 40,
     fontSize: 9,
     fontFamily: 'Helvetica',
+    color: '#111827', // Rich Black
   },
+  // Header Section
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 5,
-    paddingBottom: 0,
+    marginBottom: 30,
+    borderBottom: '1 solid #E5E7EB',
+    paddingBottom: 20,
   },
+  headerLeft: {
+    flexDirection: 'column',
+  },
+  headerRight: {
+    textAlign: 'right',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#111827',
+    marginBottom: 5,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 9,
+    color: '#6B7280', // Cool Gray
+    marginBottom: 2,
+  },
+
+  // Contact Bar (Simplified)
   contactBar: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    marginBottom: 15,
-    borderRadius: 4,
-    gap: 20,
+    justifyContent: 'space-between', // Spread out
+    marginBottom: 30,
+    fontSize: 8,
+    color: '#4B5563',
   },
-  contactGroup: {
+  contactItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  contactText: {
+
+  // Client Section (Clean)
+  clientSection: {
+    marginBottom: 30,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  clientBlock: {
+    width: '45%',
+  },
+  sectionLabel: {
     fontSize: 8,
-    color: '#374151',
-    fontWeight: 'medium',
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    marginBottom: 8,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  clientText: {
+    fontSize: 10,
+    marginBottom: 3,
+    lineHeight: 1.4,
+  },
+  clientName: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginBottom: 4,
   },
 
-  companyInfo: {
-    fontSize: 8,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 3,
-  },
-  headerRight: {
-    textAlign: 'right',
+  // Table (Modern)
+  tableContainer: {
     marginTop: 10,
-  },
-  itemContainer: {
-    marginBottom: 15,
-  },
-  itemHeader: {
-    flexDirection: 'row',
-    marginBottom: 10,
-    gap: 10,
-  },
-  imageSection: {
-    width: 100,
-    padding: 5,
-    border: '1 solid #000',
-  },
-  itemImage: {
-    width: 90,
-    height: 90,
-    objectFit: 'contain',
-  },
-  itemDetails: {
-    flex: 1,
-  },
-  description: {
-    fontSize: 10,
-    marginBottom: 5,
-    fontWeight: 'bold',
-  },
-  detailRow: {
-    flexDirection: 'row',
-    marginBottom: 3,
-    fontSize: 8,
-  },
-  detailLabel: {
-    fontWeight: 'bold',
-    minWidth: 100,
-  },
-  table: {
-    border: '1 solid #000',
-    marginTop: 8,
+    marginBottom: 20,
   },
   tableHeader: {
     flexDirection: 'row',
-    backgroundColor: '#2563EB',
-    color: 'white',
-    padding: 5,
-    fontSize: 8,
+    borderBottom: '1 solid #111827', // Strong anchor line
+    paddingBottom: 8,
+    marginBottom: 8,
+  },
+  tableHeaderLabel: {
+    fontSize: 7,
     fontWeight: 'bold',
+    textTransform: 'uppercase',
+    color: '#111827',
+    letterSpacing: 0.5,
   },
   tableRow: {
     flexDirection: 'row',
-    borderTop: '1 solid #000',
-    padding: 5,
-    fontSize: 8,
-  },
-  colItem: { width: '5%', textAlign: 'center' },
-  colQtde: { width: '8%', textAlign: 'center' },
-  colLargura: { width: '12%', textAlign: 'center' },
-  colAltura: { width: '12%', textAlign: 'center' },
-  colCor: { width: '28%' },
-  colVlrUnit: { width: '15%', textAlign: 'right' },
-  colVlrTotal: { width: '20%', textAlign: 'right' },
-  itemObservations: {
-    marginTop: 5,
-    padding: 5,
-    backgroundColor: '#f9f9f9',
-    fontSize: 8,
-  },
-  obsTitle: {
-    fontWeight: 'bold',
-    fontSize: 9,
-    marginBottom: 3,
-  },
-  obsImportant: {
-    color: '#dc2626',
-    fontSize: 8,
-    marginTop: 3,
-  },
-  totalSection: {
-    marginTop: 15,
-    alignItems: 'flex-end',
-    paddingRight: 20,
-  },
-  totalText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  generalObservations: {
-    marginTop: 20,
-    padding: 10,
-    border: '1 solid #000',
-  },
-  obsHeader: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    marginBottom: 5,
-    textAlign: 'center',
-    backgroundColor: '#f3f4f6',
-    padding: 3,
-  },
-  obsContent: {
-    fontSize: 8,
-    marginTop: 5,
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 30,
-    right: 30,
-    textAlign: 'center',
-    fontSize: 8,
-    color: '#666',
-    paddingTop: 10,
-    borderTop: '1 solid #e5e7eb',
-  },
-  pageNumber: {
-    position: 'absolute',
-    bottom: 10,
-    right: 30,
-    fontSize: 9,
-    color: '#666',
-  },
-  clientSection: {
-    marginBottom: 15,
+    backgroundColor: '#FFFFFF',
+    border: '1 solid #E5E7EB',
+    borderRadius: 4,
+    marginBottom: 8,
     padding: 8,
-    backgroundColor: '#f9f9f9',
-    border: '1 solid #e5e7eb',
   },
-  clientTitle: {
-    fontSize: 10,
+
+  // Image Column
+  colImage: {
+    width: 120, // Dedicated space for the large image
+    paddingRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F9FAFB', // Optional: light bg for image area height
+    borderRight: '1 solid #F3F4F6', // Divider line
+  },
+
+  // Columns for Data
+  colData: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 10 },
+
+  colQtde: { width: 40, textAlign: 'center', fontSize: 9 },
+  colDim: { width: 50, textAlign: 'center', fontSize: 9 },
+  colPrice: { width: 70, textAlign: 'right', fontSize: 9 },
+  colTotal: { width: 80, textAlign: 'right', fontWeight: 'bold', fontSize: 9 },
+
+  // Item Details
+  itemTitle: {
+    fontSize: 11, // Larger title
     fontWeight: 'bold',
-    marginBottom: 5,
+    marginBottom: 4,
+    color: '#111827',
   },
-  clientRow: {
-    flexDirection: 'row',
-    fontSize: 8,
+  itemMeta: {
+    fontSize: 9,
+    color: '#4B5563',
     marginBottom: 2,
   },
-  clientLabel: {
-    fontWeight: 'bold',
-    width: 80,
+  itemImage: {
+    width: 110,
+    height: 110,
+    objectFit: 'contain',
   },
-  signatureSection: {
+
+  // Breakdown Table (Calculated Materials)
+  breakdownTable: {
+    marginTop: 8,
+    border: '1 solid #E5E7EB',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  breakdownHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#F9FAFB',
+    borderBottom: '1 solid #E5E7EB',
+    padding: 4,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    padding: 4,
+    borderBottom: '1 solid #F3F4F6',
+  },
+  breakdownCell: {
+    fontSize: 7,
+    color: '#4B5563',
+  },
+
+  // Total Section
+  totalSection: {
+    marginTop: 10,
+    alignItems: 'flex-end',
+  },
+  totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 50,
-    marginBottom: 20,
-    paddingLeft: 20,
-    paddingRight: 20,
-  },
-  signatureBlock: {
-    width: '40%',
-    alignItems: 'center',
-  },
-  signatureLine: {
-    borderTop: '1 solid #000',
-    width: '100%',
+    width: 200,
     marginBottom: 5,
   },
-  signatureText: {
-    fontSize: 10,
-    textAlign: 'center',
-    fontStyle: 'italic', // Simulate handwriting style slightly, though standard fonts are limited
+  totalLabel: {
+    fontSize: 9,
+    color: '#6B7280',
+    textAlign: 'right',
+  },
+  totalValue: {
+    fontSize: 9,
+    textAlign: 'right',
+    fontWeight: 'medium',
+  },
+  finalTotal: {
+    paddingTop: 10,
+    marginTop: 5,
+  },
+  finalTotalText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
+
+  // Footer & Signatures
+  footer: {
+    position: 'absolute',
+    bottom: 30,
+    left: 40,
+    right: 40,
+    borderTop: '1 solid #E5E7EB',
+    paddingTop: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 8,
+    color: '#9CA3AF',
+  },
+  signatureSection: {
+    marginTop: 60,
+    flexDirection: 'row',
+    gap: 40,
+  },
+  signatureLine: {
+    width: 200,
+    borderTop: '1 solid #E5E7EB',
+    paddingTop: 8,
   },
 });
 
@@ -235,6 +246,15 @@ interface QuotePDFProps {
   client: Client;
   items: QuoteItem[];
 }
+
+const getImageUrl = (url?: string | null) => {
+  if (!url) return undefined;
+  if (url.startsWith('http')) return url;
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}${url}`;
+  }
+  return url;
+};
 
 export function QuotePDF({ quote, client, items }: QuotePDFProps) {
   const subtotal = items.reduce((sum, item) => sum + parseFloat(String(item.total)), 0);
@@ -245,222 +265,225 @@ export function QuotePDF({ quote, client, items }: QuotePDFProps) {
   return (
     <Document>
       <Page size="A4" style={styles.page}>
-        {/* Header */}
-        {/* Top Header Section */}
-        <View style={styles.header}>
+
+        {/* Header - Reverted to Standard Style */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 }}>
           <View>
             <Image
               src="/logo-orcamento.png"
               style={{ width: 170, height: 75, objectFit: 'contain' }}
             />
           </View>
-          <View style={styles.headerRight}>
-            <Text style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 3 }}>PEDIDO</Text>
-            <Text style={styles.companyInfo}>Nº {quote.number}</Text>
-            <Text style={styles.companyInfo}>Data: {new Date(quote.createdAt).toLocaleDateString('pt-BR')}</Text>
-            <Text style={styles.companyInfo}>Validade: {new Date(quote.validUntil).toLocaleDateString('pt-BR')}</Text>
+          <View style={{ alignItems: 'flex-end' }}>
+            <Text style={{ fontSize: 14, fontWeight: 'bold', marginBottom: 5 }}>ORÇAMENTO</Text>
+            <Text style={{ fontSize: 9, color: '#111827' }}>Nº {quote.number}</Text>
+            <Text style={{ fontSize: 9, color: '#111827' }}>Data: {new Date(quote.createdAt).toLocaleDateString('pt-BR')}</Text>
+            <Text style={{ fontSize: 9, color: '#111827' }}>Validade: {new Date(quote.validUntil).toLocaleDateString('pt-BR')}</Text>
           </View>
         </View>
 
-
-
-        {/* Modern Contact Bar with Icons */}
+        {/* Contact Bar - Clean & Minimal */}
         <View style={styles.contactBar}>
-          <View style={styles.contactGroup}>
+          <View style={styles.contactItem}>
             <PhoneIcon />
-            <Text style={styles.contactText}>(22) 99821-3739</Text>
+            <Text>(22) 99821-3739</Text>
           </View>
-
-          <View style={styles.contactGroup}>
-            <Text style={{ ...styles.contactText, fontSize: 10, color: '#CBD5E1' }}>|</Text>
-          </View>
-
-          <View style={styles.contactGroup}>
+          <View style={styles.contactItem}>
             <BuildingIcon />
-            <Text style={styles.contactText}>62.481.085/0001-24</Text>
+            <Text>62.481.085/0001-24</Text>
           </View>
-
-          <View style={styles.contactGroup}>
-            <Text style={{ ...styles.contactText, fontSize: 10, color: '#CBD5E1' }}>|</Text>
-          </View>
-
-          <View style={styles.contactGroup}>
+          <View style={styles.contactItem}>
             <MailIcon />
-            <Text style={styles.contactText}>alpheu25@gmail.com</Text>
+            <Text>alpheu25@gmail.com</Text>
           </View>
         </View>
 
-        {/* Cliente */}
-        <View style={styles.clientSection}>
-          <Text style={styles.clientTitle}>DADOS DO CLIENTE</Text>
-          <View style={styles.clientRow}>
-            <Text style={styles.clientLabel}>Nome:</Text>
-            <Text>{client.name}</Text>
+        {/* Client & Project Info */}
+        {/* Client & Project Info - Styled Card */}
+        <View style={{
+          marginTop: 20,
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          backgroundColor: '#F9FAFB',
+          border: '1 solid #E5E7EB',
+          borderRadius: 6,
+          padding: 15
+        }}>
+          {/* Left Column: Client Name */}
+          <View style={styles.clientBlock}>
+            <Text style={styles.sectionLabel}>CLIENTE</Text>
+            <Text style={styles.clientName}>{client.name}</Text>
+            {client.phone && <Text style={styles.clientText}>{client.phone}</Text>}
+            {client.email && <Text style={styles.clientText}>{client.email}</Text>}
           </View>
-          <View style={styles.clientRow}>
-            <Text style={styles.clientLabel}>Contato:</Text>
-            <Text>{client.contact}</Text>
+
+          {/* Right Column: Address & Docs */}
+          <View style={styles.clientBlock}>
+            <Text style={styles.sectionLabel}>DETALHES</Text>
+            {client.address && <Text style={styles.clientText}>{client.address}</Text>}
+            {client.cnpjCpf && <Text style={styles.clientText}>CPF/CNPJ: {client.cnpjCpf}</Text>}
           </View>
-          {client.email ? (
-            <View style={styles.clientRow}>
-              <Text style={styles.clientLabel}>Email:</Text>
-              <Text>{client.email}</Text>
-            </View>
-          ) : null}
-          <View style={styles.clientRow}>
-            <Text style={styles.clientLabel}>Telefone:</Text>
-            <Text>{client.phone}</Text>
-          </View>
-          {client.address ? (
-            <View style={styles.clientRow}>
-              <Text style={styles.clientLabel}>Endereço:</Text>
-              <Text>{client.address}</Text>
-            </View>
-          ) : null}
-          {client.cnpjCpf ? (
-            <View style={styles.clientRow}>
-              <Text style={styles.clientLabel}>CNPJ/CPF:</Text>
-              <Text>{client.cnpjCpf}</Text>
-            </View>
-          ) : null}
         </View>
 
-        {/* Items */}
-        {items.map((item, index) => (
-          <View key={item.id} style={styles.itemContainer} wrap={false}>
-            {/* Item Header with Image and Details */}
-            <View style={styles.itemHeader}>
-              {/* Image Section */}
-              {item.imageUrl ? (
-                <View style={styles.imageSection}>
-                  <Image
-                    src={item.imageUrl}
-                    style={styles.itemImage}
-                  />
+        {/* Table Header (Simplified to just Labels, since logic is inside card now) */}
+        {/* We can remove the big table header or keep it as a legend. 
+            Since the user wants a "Card" look, inner labels are often better. 
+            I'll remove the outer header to keep it clean, as proposed in the code block above where I added labels inside the card. */}
+        <View style={styles.tableContainer}>
+          {/* Table Items */}
+          {items.map((item, index) => (
+            <View key={item.id} style={styles.tableRow} wrap={false}>
+
+              {/* Left Column: Image (if exists) or item number */}
+              <View style={styles.colImage}>
+                {item.imageUrl ? (
+                  <Image src={getImageUrl(item.imageUrl)!} style={styles.itemImage} />
+                ) : (
+                  <Text style={{ fontSize: 16, color: '#E5E7EB', fontWeight: 'bold' }}>#{index + 1}</Text>
+                )}
+              </View>
+
+              {/* Right Column: Content + Data Grid */}
+              <View style={{ flex: 1, paddingLeft: 10 }}>
+
+                {/* content Row: Title & Specs */}
+                <View style={{ marginBottom: 10 }}>
+                  <Text style={styles.itemTitle}>{item.description}</Text>
+
+                  <View style={{ gap: 2 }}>
+                    {item.environment && (
+                      <Text style={styles.itemMeta}>• Local: {item.environment}</Text>
+                    )}
+                    {item.profileColor && (
+                      <Text style={styles.itemMeta}>• Perfil: {item.profileColor}</Text>
+                    )}
+                    {item.accessoryColor && (
+                      <Text style={styles.itemMeta}>• Acess.: {item.accessoryColor}</Text>
+                    )}
+                    {item.colorThickness && (
+                      <Text style={styles.itemMeta}>• Vidro: {item.colorThickness}</Text>
+                    )}
+                  </View>
+
+                  {item.itemObservations && (
+                    <Text style={{ ...styles.itemMeta, color: '#DC2626', marginTop: 4, fontStyle: 'italic' }}>
+                      Obs: {item.itemObservations}
+                    </Text>
+                  )}
                 </View>
-              ) : null}
 
-              {/* Item Details */}
-              <View style={styles.itemDetails}>
-                <Text style={styles.description}>{item.description}</Text>
+                {/* Data Row: Numeric Data Grid */}
+                <View style={{ borderTop: '1 solid #F3F4F6', paddingTop: 8, flexDirection: 'row', justifyContent: 'flex-end', gap: 15 }}>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 7, color: '#9CA3AF', marginBottom: 2 }}>QTD</Text>
+                    <Text style={styles.colQtde}>{parseFloat(String(item.quantity)).toLocaleString('pt-BR')}</Text>
+                  </View>
 
-                {item.profileColor ? (
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>*COR PERFIL:</Text>
-                    <Text>{item.profileColor}</Text>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 7, color: '#9CA3AF', marginBottom: 2 }}>LARG.</Text>
+                    <Text style={styles.colDim}>{item.width ? parseFloat(String(item.width)).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '-'}</Text>
+                  </View>
+
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={{ fontSize: 7, color: '#9CA3AF', marginBottom: 2 }}>ALT.</Text>
+                    <Text style={styles.colDim}>{item.height ? parseFloat(String(item.height)).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '-'}</Text>
+                  </View>
+
+                  <View style={{ alignItems: 'flex-end' }}>
+                    <Text style={{ fontSize: 7, color: '#9CA3AF', marginBottom: 2 }}>UNIT.</Text>
+                    <Text style={styles.colPrice}>R$ {parseFloat(String(item.unitPrice)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
+                  </View>
+
+                  <View style={{ alignItems: 'flex-end', width: '20%' }}>
+                    <Text style={{ fontSize: 7, color: '#9CA3AF', marginBottom: 2 }}>TOTAL</Text>
+                    <Text style={styles.colTotal}>R$ {parseFloat(String(item.total)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</Text>
+                  </View>
+                </View>
+
+                {/* Sub-table: Calculated Materials Breakdown */}
+                {(item.calculatedMaterials && Array.isArray((item.calculatedMaterials as any).materials) && (item.calculatedMaterials as any).materials.length > 0) ? (
+                  <View style={styles.breakdownTable}>
+                    <View style={styles.breakdownHeader}>
+                      <Text style={[styles.breakdownCell, { width: '40%', fontWeight: 'bold' }]}>COMPONENTE</Text>
+                      <Text style={[styles.breakdownCell, { width: '25%', fontWeight: 'bold', textAlign: 'center' }]}>CORTE (mm)</Text>
+                      <Text style={[styles.breakdownCell, { width: '15%', fontWeight: 'bold', textAlign: 'center' }]}>QTD</Text>
+                      <Text style={[styles.breakdownCell, { width: '20%', fontWeight: 'bold', textAlign: 'right' }]}>PESO (kg)</Text>
+                    </View>
+                    {((item.calculatedMaterials as any).materials as any[]).map((mat: any, idx: number) => (
+                      <View key={`mat-${idx}`} style={styles.breakdownRow}>
+                        <Text style={[styles.breakdownCell, { width: '40%' }]}>{mat.profile?.code || "Perfil"}</Text>
+                        <Text style={[styles.breakdownCell, { width: '25%', textAlign: 'center' }]}>{mat.calculatedSize?.toFixed(1) || "-"}</Text>
+                        <Text style={[styles.breakdownCell, { width: '15%', textAlign: 'center' }]}>{mat.calculatedQuantity || "-"}</Text>
+                        <Text style={[styles.breakdownCell, { width: '20%', textAlign: 'right' }]}>{mat.totalWeight?.toFixed(2) || "-"}</Text>
+                      </View>
+                    ))}
+                    <View style={[styles.breakdownRow, { backgroundColor: '#F9FAFB' }]}>
+                      <Text style={[styles.breakdownCell, { width: '80%', textAlign: 'right', fontWeight: 'bold' }]}>Peso Total de Alumínio:</Text>
+                      <Text style={[styles.breakdownCell, { width: '20%', textAlign: 'right', fontWeight: 'bold' }]}>
+                        {(((item.calculatedMaterials as any).materials as any[]).reduce((acc: number, cur: any) => acc + (cur.totalWeight || 0), 0)).toFixed(2)} kg
+                      </Text>
+                    </View>
                   </View>
                 ) : null}
 
-                {item.accessoryColor ? (
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>*COR ACESSÓRIO:</Text>
-                    <Text>{item.accessoryColor}</Text>
-                  </View>
-                ) : null}
-
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 5 }}>
-                  {item.line ? (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>LINHA:</Text>
-                      <Text>{item.line}</Text>
-                    </View>
-                  ) : null}
-                  {item.deliveryDate ? (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>DATA ENTREGA:</Text>
-                      <Text>{new Date(item.deliveryDate).toLocaleDateString('pt-BR')}</Text>
-                    </View>
-                  ) : null}
-                </View>
               </View>
+
             </View>
+          ))}
+        </View>
 
-            {/* Table */}
-            <View style={styles.table}>
-              <View style={styles.tableHeader}>
-                <Text style={styles.colItem}>ITEM</Text>
-                <Text style={styles.colQtde}>QTDE.</Text>
-                <Text style={styles.colLargura}>LARGURA:</Text>
-                <Text style={styles.colAltura}>ALTURA:</Text>
-                <Text style={styles.colCor}>COR E ESPESSURA</Text>
-                <Text style={styles.colVlrUnit}>VLR. UNIT.</Text>
-                <Text style={styles.colVlrTotal}>VLR. TOTAL</Text>
-              </View>
-              <View style={styles.tableRow}>
-                <Text style={styles.colItem}>{index + 1}</Text>
-                <Text style={styles.colQtde}>{parseFloat(String(item.quantity)).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}</Text>
-                <Text style={styles.colLargura}>{item.width ? parseFloat(String(item.width)).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '-'}</Text>
-                <Text style={styles.colAltura}>{item.height ? parseFloat(String(item.height)).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) : '-'}</Text>
-                <Text style={styles.colCor}>{item.colorThickness || '-'}</Text>
-                <Text style={styles.colVlrUnit}>R$ {parseFloat(String(item.unitPrice)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
-                <Text style={styles.colVlrTotal}>R$ {parseFloat(String(item.total)).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
-              </View>
-            </View>
+        {/* Total Section with Signature Restored */}
+        <View style={{ marginTop: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' }}>
 
-            {/* Item Observations */}
-            {item.itemObservations ? (
-              <View style={styles.itemObservations}>
-                <Text style={styles.obsTitle}>📋 OBSERVAÇÕES DESTE ITEM</Text>
-                <Text style={styles.obsImportant}>{item.itemObservations}</Text>
-              </View>
-            ) : null}
+          {/* Left Side: Single Signature Line */}
+          <View style={{ width: '40%', paddingBottom: 4 }}>
+            <View style={{ borderBottom: '1 solid #111827', marginBottom: 2 }} />
+            <Text style={{ fontSize: 8, textAlign: 'center', color: '#6B7280' }}>ACEITE DO CLIENTE</Text>
           </View>
-        ))}
 
-        {/* Total Section */}
-        <View style={styles.totalSection}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
-            <Text style={{ fontSize: 10 }}>SUBTOTAL:</Text>
-            <Text style={{ fontSize: 10, fontWeight: 'bold' }}>R$ {subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
-          </View>
-          {discountPercent > 0 && (
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
-              <Text style={{ fontSize: 10 }}>DESCONTO ({discountPercent.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}%):</Text>
-              <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#DC2626' }}>-R$ {discountValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+          {/* Right Side: Totals */}
+          <View style={{ alignItems: 'flex-end', width: '40%' }}>
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Subtotal</Text>
+              <Text style={styles.totalValue}>
+                {subtotal.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Text>
             </View>
-          )}
-          <View style={{ borderTop: '1px solid #ddd', paddingTop: 5, marginTop: 3 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-              <Text style={styles.totalText}>VALOR TOTAL:</Text>
-              <Text style={styles.totalText}>R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</Text>
+
+            {discountPercent > 0 && (
+              <View style={styles.totalRow}>
+                <Text style={{ ...styles.totalLabel, color: '#EF4444' }}>Desconto ({discountPercent}%)</Text>
+                <Text style={{ ...styles.totalValue, color: '#EF4444' }}>
+                  - {discountValue.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </Text>
+              </View>
+            )}
+
+            <View style={[styles.totalRow, styles.finalTotal]}>
+              <Text style={styles.finalTotalText}>Total</Text>
+              <Text style={styles.finalTotalText}>
+                R$ {total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </Text>
             </View>
           </View>
         </View>
 
         {/* General Observations */}
-        {quote.observations ? (
-          <View style={styles.generalObservations}>
-            <Text style={styles.obsHeader}>OBSERVAÇÕES</Text>
-            <Text style={styles.obsContent}>{quote.observations}</Text>
+        {quote.observations && (
+          <View style={{ marginTop: 30, borderTop: '1 solid #E5E7EB', paddingTop: 10 }}>
+            <Text style={styles.sectionLabel}>OBSERVAÇÕES FINAIS</Text>
+            <Text style={{ fontSize: 9 }}>{quote.observations}</Text>
           </View>
-        ) : null}
+        )}
 
         {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={{ marginBottom: 5 }}>A VALIDADE DO ORÇAMENTO: 05 DIAS ÚTEIS OU REPASSE DE NOVOS PREÇOS DE NOSSOS FORNECEDORES.</Text>
-          <Text style={{ marginTop: 5, fontWeight: 'bold' }}>HelpGlass - Soluções em Vidros e Espelhos - (22) 99821-3739</Text>
+        <View style={styles.footer} fixed>
+          <Text style={styles.footerText}>
+            Este orçamento é válido por 5 dias úteis. Sujeito a alteração de valores.
+          </Text>
+          <Text style={styles.footerText} render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} fixed />
         </View>
 
-        {/* Signatures */}
-        <View style={styles.signatureSection}>
-          <View style={styles.signatureBlock}>
-            <View style={styles.signatureLine} />
-            <Text style={styles.signatureText}>Autorização do Cliente</Text>
-            <Text style={{ ...styles.signatureText, fontSize: 8, marginTop: 2 }}>{client.name}</Text>
-          </View>
-          <View style={styles.signatureBlock}>
-            <View style={styles.signatureLine} />
-            <Text style={styles.signatureText}>Alpheu Sardenberg</Text>
-            <Text style={{ ...styles.signatureText, fontSize: 8, marginTop: 2 }}>Representante Comercial</Text>
-          </View>
-        </View>
-
-        {/* Page Number */}
-        <Text
-          style={styles.pageNumber}
-          render={({ pageNumber, totalPages }) => `Página ${pageNumber} de ${totalPages}`}
-          fixed
-        />
       </Page>
     </Document>
   );
