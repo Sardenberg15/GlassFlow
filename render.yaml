@@ -19,3 +19,7 @@ services:
         sync: false
       - key: SESSION_SECRET
         generateValue: true
+      - key: APP_USER
+        value: sardenberg
+      - key: APP_PASSWORD
+        sync: false # defina a senha de acesso ao sistema no painel do Render

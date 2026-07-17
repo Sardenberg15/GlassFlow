@@ -4,6 +4,26 @@ import { pool } from "./db";
 import { setupVite, serveStatic, log } from "./vite";
 
 const app = express();
+
+// Proteção por senha (HTTP Basic Auth) — ativa apenas quando APP_PASSWORD está
+// definida (produção). Sem ela (dev local), nada muda.
+const APP_USER = process.env.APP_USER || "sardenberg";
+const APP_PASSWORD = process.env.APP_PASSWORD;
+if (APP_PASSWORD) {
+  app.use((req, res, next) => {
+    const header = req.headers.authorization || "";
+    const [scheme, encoded] = header.split(" ");
+    if (scheme === "Basic" && encoded) {
+      const [user, ...passParts] = Buffer.from(encoded, "base64").toString().split(":");
+      if (user === APP_USER && passParts.join(":") === APP_PASSWORD) {
+        return next();
+      }
+    }
+    res.set("WWW-Authenticate", 'Basic realm="GlassFlow", charset="UTF-8"');
+    res.status(401).send("Autenticação necessária");
+  });
+}
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
