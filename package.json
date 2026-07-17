@@ -124,8 +124,5 @@
     "@types/ws": "^8.5.13",
     "drizzle-kit": "^0.31.4",
     "tsx": "^4.21.0"
-  },
-  "optionalDependencies": {
-    "bufferutil": "^4.0.8"
   }
 }
